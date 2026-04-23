@@ -78,7 +78,7 @@ def plot_projections(shape, views=("front", "side", "top")):
         plt.xlabel("X" if view != "side" else "Y")
         plt.ylabel("Z" if view != "top" else "Y")
         plt.axis('equal')
-        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.grid(False)
         plt.tight_layout()
         plt.show()
         
@@ -117,20 +117,18 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top")):
         
         # Format plot
         ax.set_title(f"{view.capitalize()} View")
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
+        # ax.set_xlabel(x_label)
+        # ax.set_ylabel(y_label)
         ax.set_aspect('equal')
-        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.axis('off')
         
-        # Add legend (avoid duplicates)
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
-    
+        # # Add legend (avoid duplicates)
+        # handles, labels = ax.get_legend_handles_labels()
+        # by_label = dict(zip(labels, handles))
+        # ax.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
+        
     plt.tight_layout()
     plt.show()
-
-
 
 def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False):
     """
@@ -223,7 +221,7 @@ def convert_polydata_to_matplotlib(mesh, view="front"):
     points = mesh.points
     
     # Apply projection based on view
-    if view == "front":
+    if view == "top":
         # Project to XY plane (looking along Z)
         x, y = points[:, 0], points[:, 1]
         x_label, y_label = "X", "Y"
@@ -233,7 +231,7 @@ def convert_polydata_to_matplotlib(mesh, view="front"):
         x, y = points[:, 1], points[:, 2]
         x_label, y_label = "Y", "Z"
         
-    elif view == "top":
+    elif view == "front":
         # Project to XZ plane (looking along Y)
         x, y = points[:, 0], points[:, 2]
         x_label, y_label = "X", "Z"
@@ -262,11 +260,9 @@ if __name__ == "__main__":
     path = "objects/obt_LG.obj"
     path_step = "objects/obt_LG.stp"    
 
-    radius = 50000  
+    radius = 50
     
-    result, centers = find_accessible_surface(path, sphere_radius=radius, render=False)
-    # print(result)
-    # print( np.unique( result['accessible'] ) )    
+    result, centers = find_accessible_surface(path, sphere_radius=radius, render=False) 
     
     # Extract accessible fragment
     accessible_indices = np.where( result['accessible'] > 0.5)[0]
@@ -281,7 +277,7 @@ if __name__ == "__main__":
     # draw_sphere(result, radius, centers[3], accessible_mesh)
 
     shape = load_step(path_step)
-    # contours = plot_projections(shape)
+
     # get_2d_mask(accessible_mesh, contours)
 
     plot_mesh_with_projections(accessible_mesh, shape)
