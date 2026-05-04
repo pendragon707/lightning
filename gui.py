@@ -101,70 +101,6 @@ class WorkerThread(QThread):
         self.finished.emit(True, out_path)
 
 
-# class ImageDisplayWidget(QWidget):
-#     """Widget for displaying generated plot images"""
-#     def __init__(self):
-#         super().__init__()
-#         layout = QVBoxLayout()
-        
-#         # Create scroll area for images
-#         scroll_area = QScrollArea()
-#         scroll_area.setWidgetResizable(True)
-#         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-#         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        
-#         self.image_container = QWidget()
-#         self.image_layout = QVBoxLayout(self.image_container)
-#         scroll_area.setWidget(self.image_container)
-        
-#         layout.addWidget(scroll_area)
-#         self.setLayout(layout)
-    
-#     def load_images_from_directory(self, directory):
-#         """Load all PNG images from a directory"""
-#         # Clear existing images
-#         for i in reversed(range(self.image_layout.count())): 
-#             self.image_layout.itemAt(i).widget().setParent(None)
-        
-#         # Find all PNG files
-#         png_files = list(Path(directory).glob("*.png"))
-        
-#         if not png_files:
-#             no_image_label = QLabel("No plot images found in output directory")
-#             no_image_label.setAlignment(Qt.AlignCenter)
-#             self.image_layout.addWidget(no_image_label)
-#             return
-        
-#         # Add each image to the display
-#         for png_file in png_files:
-#             frame = QWidget()
-#             frame_layout = QVBoxLayout(frame)
-            
-#             # Image label
-#             image_label = QLabel()
-#             pixmap = QPixmap(str(png_file))
-            
-#             # Scale image to fit while maintaining aspect ratio
-#             scaled_pixmap = pixmap.scaled(800, 600, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-#             image_label.setPixmap(scaled_pixmap)
-#             image_label.setAlignment(Qt.AlignCenter)
-            
-#             # Filename label
-#             name_label = QLabel(png_file.name)
-#             name_label.setAlignment(Qt.AlignCenter)
-#             name_label.setFont(QFont("Arial", 10))
-            
-#             frame_layout.addWidget(name_label)
-#             frame_layout.addWidget(image_label)
-            
-#             self.image_layout.addWidget(frame)
-            
-#             # Add separator
-#             separator = QLabel("─" * 100)
-#             separator.setAlignment(Qt.AlignCenter)
-#             self.image_layout.addWidget(separator)
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -208,24 +144,11 @@ class MainWindow(QMainWindow):
         self.progress_text.setMaximumHeight(100)
         left_layout.addWidget(self.progress_text)
         
-        # # Right panel for image display
-        # right_panel = QWidget()
-        # right_layout = QVBoxLayout(right_panel)
-        
-        # Image display widget
-        # self.image_display = ImageDisplayWidget()
-        # right_layout.addWidget(self.image_display)
-        
         # Add panels to main layout
         main_layout.addWidget(left_panel)
-        # main_layout.addWidget(right_panel, 1)
         
         # Worker thread
         self.worker = None
-        
-        # Timer for checking output directory
-        # self.check_timer = QTimer()
-        # self.check_timer.timeout.connect(self.check_output_directory)
         self.current_output_dir = None
     
     def setup_mask_tab(self):
@@ -380,11 +303,6 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", f"Task failed:\n{result}")
         
         self.worker = None
-    
-    # def check_output_directory(self):
-    #     """Check if output directory exists and load images"""
-    #     if self.current_output_dir and Path(self.current_output_dir).exists():
-    #         self.image_display.load_images_from_directory(self.current_output_dir)
 
 
 def main():
