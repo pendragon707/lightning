@@ -79,7 +79,9 @@ def plot_projections(shape, views=("front", "side", "bottom")):
     return contours_2d
 
 if __name__ == "__main__":
-    STEP_PATH = "objects/base.stp"  
+    # STEP_PATH = "objects/base.stp" 
+    # STEP_PATH = "/home/none/Projects/lightning/stp/Sborka_Zveno.stp"
+    STEP_PATH = "objects/flight.step"  
     shape = load_step(STEP_PATH)
     
     # Returns a dict: {'front': [(x,y)...], 'side': [...], 'bottom': [...]}

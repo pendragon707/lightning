@@ -1,3 +1,6 @@
 images/
 objects/
 .vscode/
+test/
+out/
+__pycache__/

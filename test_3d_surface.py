@@ -98,9 +98,11 @@ def draw_sphere(mesh, sphere_radius, center, mesh_mask = None):
 
 if __name__ == "__main__":
     # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
-    path = "objects/flight.obj"
+    # path = "objects/flight.obj"
 
-    radius = 50000  # Adjust to your use case
+    path = "/home/none/Projects/lightning/new/obj/Sborka_Zveno.obj"
+
+    radius = 342000  
     
     result, centers = find_accessible_surface(path, sphere_radius=radius, render=True)
     # print(result)
