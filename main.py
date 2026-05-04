@@ -28,10 +28,6 @@ if __name__ == "__main__":
     
     result, centers = find_accessible_surface(args.obj, sphere_radius=args.radius, render=args.draw, out_dir=out_path)
     
-    # Extract accessible fragment
-    # accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    # accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    # accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
     accessible_mesh = get_accessible_mesh(result)
 
     # Save result

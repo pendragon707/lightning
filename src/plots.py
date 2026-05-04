@@ -31,28 +31,30 @@ def extract_edge_points(shape, samples_per_edge=80):
         exp.Next()
     return all_edges    
 
-def project_to_2d(edges_3d, view="front"):
+def project_to_2d(edges_3d, view="top"):
     """
     Project 3D edge points to 2D based on standard CAD views.
     Convention: Z is up, right-handed coordinate system.
     """
     projections = []
     for pts in edges_3d:
-        if view == "front":
+        if view == "top":
             # Looking along -Y axis → keep X (right) & Z (up)
             x, y = pts[:, 0], pts[:, 2]
-        elif view == "side":
+        elif view == "front":
             # Looking along -X axis → keep Y (right) & Z (up)
             x, y = pts[:, 1], pts[:, 2]
-        elif view == "top":
+        elif view == "side":
             # Looking along -Z axis → keep X (right) & Y (forward)
             x, y = pts[:, 0], pts[:, 1]
+        elif view == "bottom":
+            x, y = pts[:, 0], -pts[:, 2]
         else:
-            raise ValueError("view must be 'front', 'side', or 'top'")
+            raise ValueError("view must be 'front', 'side', 'top' or 'bottom'")
         projections.append((x, y))
     return projections        
 
-def plot_projections(shape, views=("front", "side", "top")):
+def plot_projections(shape, views=("front", "side", "top", "bottom")):
     edges_3d = extract_edge_points(shape)
     contours_2d = {}
     
@@ -74,7 +76,7 @@ def plot_projections(shape, views=("front", "side", "top")):
     return contours_2d
 
 
-def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top"), out_dir=None):
+def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bottom"), out_dir=None):
     """
     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
     
@@ -87,8 +89,8 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top"), out_
     edges_3d = extract_edge_points(shape)
     
     # Create subplots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    view_map = {"front": 0, "side": 1, "top": 2}
+    fig, axes = plt.subplots(1, 4, figsize=(18, 6))
+    view_map = {"front": 0, "side": 1, "top": 2, "bottom": 3}
     
     for view in views:
         ax = axes[view_map[view]]
@@ -109,11 +111,11 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top"), out_
         ax.set_aspect('equal')
         ax.axis('off')
 
-    plt.tight_layout()
-    plt.show()
-
     image_path = out_dir / "projections.png"
     fig.savefig(image_path)
+
+    plt.tight_layout()
+    plt.show()
 
 ### ----------------------------------------------------------------------
 ### pyvista
@@ -139,7 +141,8 @@ def get_2d_mask(mesh, contours = None, images=None, out_dir=None):
         projected_mesh.faces = mesh.faces.copy()
         
         # Save or plot
-        plotter = pv.Plotter(window_size=[800, 800])
+        # plotter = pv.Plotter(window_size=[800, 800])
+        plotter = pv.Plotter(window_size=[800, 800], off_screen=True)
 
         if images:
             plotter.add_background_image( Path(__file__).resolve().parent / "images" / images[name])
@@ -153,16 +156,16 @@ def get_2d_mask(mesh, contours = None, images=None, out_dir=None):
         plotter.view_xy() if name == 'top' else plotter.view_xz() if name == 'front' else plotter.view_yz()
         
         image_path = out_dir / f"projection_{name}.png"
-        plotter.show(screenshot=image_path)
-        # plotter.show(screenshot=f'images/projection_{name}.png')
+        # plotter.show(screenshot=image_path)
+        plotter.screenshot(image_path, transparent_background=True)
 
-def convert_polydata_to_matplotlib(mesh, view="front"):
+def convert_polydata_to_matplotlib(mesh, view="top"):
     """
     Convert PyVista PolyData to Matplotlib-compatible 2D projection.
     
     Parameters:
     - mesh: pv.PolyData object
-    - view: string, one of "front", "side", "top"
+    - view: string, one of "front", "side", "top", "bottom"
     
     Returns:
     - list of arrays for plotting
@@ -170,20 +173,25 @@ def convert_polydata_to_matplotlib(mesh, view="front"):
     points = mesh.points
     
     # Apply projection based on view
-    if view == "top":
+    if view == "side":
         # Project to XY plane (looking along Z)
         x, y = points[:, 0], points[:, 1]
         x_label, y_label = "X", "Y"
         
-    elif view == "side":
+    elif view == "front":
         # Project to YZ plane (looking along X)
         x, y = points[:, 1], points[:, 2]
         x_label, y_label = "Y", "Z"
         
-    elif view == "front":
+    elif view == "top":
         # Project to XZ plane (looking along Y)
         x, y = points[:, 0], points[:, 2]
         x_label, y_label = "X", "Z"
+
+    elif view == "bottom":
+        x, y = points[:, 0], -points[:, 2]
+        x_label, y_label = "X", "Z"
+
     else:
         raise ValueError("view must be 'front', 'side', or 'top'")
     

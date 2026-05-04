@@ -4,3 +4,7 @@ objects/
 test/
 out/
 __pycache__/
+
+build
+dist
+*spec
