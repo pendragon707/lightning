@@ -1,7 +1,11 @@
 import pyvista as pv
 import numpy as np
 from scipy.spatial import cKDTree
+
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg') 
+
 from pathlib import Path
 
 from OCC.Core.STEPControl import STEPControl_Reader
