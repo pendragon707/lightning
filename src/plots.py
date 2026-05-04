@@ -1,5 +1,3 @@
-# input - flight.obj (for mesh alghorithm), flight.step (for picture)
-
 import pyvista as pv
 import numpy as np
 from scipy.spatial import cKDTree
@@ -13,15 +11,6 @@ from OCC.Core.TopAbs import TopAbs_EDGE
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
 from OCC.Core.GCPnts import GCPnts_UniformAbscissa
 from OCC.Core.TopoDS import TopoDS_Edge, topods
-
-def load_step(filepath):
-    """Load a STEP file and return the root shape."""
-    reader = STEPControl_Reader()
-    status = reader.ReadFile(filepath)
-    if status != IFSelect_RetDone:
-        raise RuntimeError(f"❌ Failed to load STEP file: {filepath}")
-    reader.TransferRoots()
-    return reader.OneShape()
 
 def extract_edge_points(shape, samples_per_edge=80):
     """Extract 3D point arrays from all edges in the model."""
@@ -85,7 +74,7 @@ def plot_projections(shape, views=("front", "side", "top")):
     return contours_2d
 
 
-def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top")):
+def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top"), out_dir=None):
     """
     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
     
@@ -117,63 +106,20 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top")):
         
         # Format plot
         ax.set_title(f"{view.capitalize()} View")
-        # ax.set_xlabel(x_label)
-        # ax.set_ylabel(y_label)
         ax.set_aspect('equal')
         ax.axis('off')
-        
-        # # Add legend (avoid duplicates)
-        # handles, labels = ax.get_legend_handles_labels()
-        # by_label = dict(zip(labels, handles))
-        # ax.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=8)
-        
+
     plt.tight_layout()
     plt.show()
 
-def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False):
-    """
-    Finds surface fragments where a sphere of fixed radius can touch 
-    without intersecting or penetrating the mesh elsewhere.
-    
-    Parameters:
-        mesh_path (str): Path to OBJ file
-        sphere_radius (float): Radius of the checking sphere
-        tol (float): Numerical tolerance for intersection checking
-        
-    Returns:
-        pyvista.PolyData: Mesh with 'accessible' point data array (1.0 or 0.0)
-    """
-    # 1. Load & clean mesh
-    mesh = pv.read(mesh_path)
-    mesh.clean(inplace=True)  # Remove duplicate vertices
-    
-    # 2. Compute point normals (assumes outward orientation for closed meshes)
-    mesh.compute_normals(cell_normals=False, point_normals=True, inplace=True)
-    
-    points = mesh.points
-    normals = mesh['Normals']
+    image_path = out_dir / "projections.png"
+    fig.savefig(image_path)
 
-    # 3. Build spatial index for fast distance queries
-    tree = cKDTree(points)
-    
-    # 4. Candidate sphere centers (r units along the normal)
-    centers = points + normals * sphere_radius
+### ----------------------------------------------------------------------
+### pyvista
+### ----------------------------------------------------------------------
 
-    if render:
-        draw_sphere(mesh, radius, centers[3])
-    
-    # 5. Query distances: k=2 because the nearest point will be the contact vertex itself
-    dists, _ = tree.query(centers, k=2)
-    dist_to_other = dists[:, 1]  # Distance to the second closest point
-    
-    # 6. Mark accessible points
-    # Accessible if no OTHER point is within sphere_radius (with tolerance)
-    accessible = dist_to_other >= (sphere_radius - tol)
-    
-    mesh['accessible'] = accessible.astype(float)
-    return mesh, centers
-
-def get_2d_mask(mesh, contours = None, images=None):
+def get_2d_mask(mesh, contours = None, images=None, out_dir=None):
     projections = {
         'front': (0, -1, 0),   # looking along Y axis
         'top': (0, 0, 1),      # looking along Z axis  
@@ -201,11 +147,14 @@ def get_2d_mask(mesh, contours = None, images=None):
         if contours:
             for i, (x, y) in enumerate(contours[name]):
                 points_3d = np.column_stack((x, y, np.zeros_like(x)))
-                plotter.add_lines(points_3d, color='black', width=3, label=f'Contour {i}')
+                plotter.add_lines(points_3d, color='black', width=1, label=f'Contour {i}')
 
         plotter.add_mesh(projected_mesh, color='red', show_edges=False, smooth_shading=True)
         plotter.view_xy() if name == 'top' else plotter.view_xz() if name == 'front' else plotter.view_yz()
-        plotter.show(screenshot=f'images/projection_{name}.png')
+        
+        image_path = out_dir / f"projection_{name}.png"
+        plotter.show(screenshot=image_path)
+        # plotter.show(screenshot=f'images/projection_{name}.png')
 
 def convert_polydata_to_matplotlib(mesh, view="front"):
     """
@@ -240,50 +189,22 @@ def convert_polydata_to_matplotlib(mesh, view="front"):
     
     return x, y, x_label, y_label
 
-
-def draw_sphere(mesh, sphere_radius, center, mesh_mask = None):
+def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, step=0):
     sphere = pv.Sphere(radius=sphere_radius, center=center)
 
     p = pv.Plotter()
     p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    if mesh_mask:
+    if mesh_mask is not None:
         p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
     p.add_mesh(sphere, color='blue', show_edges=False, smooth_shading=True, opacity=0.3, label='Sphere')
-    p.show() 
-
-
-if __name__ == "__main__":
-    # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
     
-    # path = "objects/base_8.obj"
-    # path_step = "objects/base.stp"
+    image_path = out_dir / f"sphere_{sphere_radius}_{step}.png"
+    p.show(screenshot=image_path)  
 
-    path = "/home/none/Projects/lightning/new/obj/Sborka_Zveno.obj"  
-    path_step = "/home/none/Projects/lightning/new/stp/Sborka_Zveno.stp"
-
-    radius = 50000    
-    result, centers = find_accessible_surface(path, sphere_radius=radius, render=False) 
-    
-    # Extract accessible fragment
-    accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
-
-    # Save result
-    accessible_mesh.save("images/accessible_fragment.obj")
-
-    print(type(accessible_mesh))
-
-    # draw_sphere(result, radius, centers[3], accessible_mesh)
-
-    shape = load_step(path_step)    
-
-    plot_mesh_with_projections(accessible_mesh, shape)
-    
-    # Visualization
+def plot_mesh_mask(mesh, mesh_mask, out_dir=None):
     p = pv.Plotter()
-    p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
-    p.show() 
+    p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
+    p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
 
-    get_2d_mask(accessible_mesh)
+    image_path = out_dir / "result.png"
+    p.show(screenshot=image_path)  
