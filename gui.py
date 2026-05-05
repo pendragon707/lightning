@@ -98,7 +98,8 @@ class WorkerThread(QThread):
         get_2d_mask(mesh_mask, out_dir=out_path)
         
         self.progress.emit(f"Plots saved to: {out_path}")
-        self.finished.emit(True, out_path)
+        print(type(out_path))
+        self.finished.emit(True, str(out_path))
 
 
 class MainWindow(QMainWindow):
@@ -123,6 +124,16 @@ class MainWindow(QMainWindow):
         self.plots_tab = QWidget()
         self.mode_tabs.addTab(self.mask_tab, "Calculate 3D Mask")
         self.mode_tabs.addTab(self.plots_tab, "Generate Plots")
+
+        self.plots_obj_path = QLineEdit("objects/base.obj")
+        self.plots_stp_path = QLineEdit("objects/base.stp")
+        self.mask_path = QLineEdit("out/base/accessible_fragment.obj")
+        self.plots_outdir = QLineEdit( str(Path(self.mask_path.text()).parent) )
+
+        self.mask_obj_path = QLineEdit("objects/obt_LG.obj")
+        self.mask_stp_path = QLineEdit("objects/obt_LG.stp")
+        self.radius_input = QLineEdit("50000")
+        self.mask_outdir = QLineEdit(datetime.now().strftime("%Y-%m-%d-%H-%M"))
         
         # Setup mask tab
         self.setup_mask_tab()
@@ -146,6 +157,8 @@ class MainWindow(QMainWindow):
         
         # Add panels to main layout
         main_layout.addWidget(left_panel)
+
+        self.mask_path.textChanged.connect(self.update_mask_path)
         
         # Worker thread
         self.worker = None
@@ -156,8 +169,7 @@ class MainWindow(QMainWindow):
         
         # OBJ file
         obj_layout = QHBoxLayout()
-        obj_layout.addWidget(QLabel("OBJ File:"))
-        self.mask_obj_path = QLineEdit("objects/obt_LG.obj")
+        obj_layout.addWidget(QLabel("OBJ File:"))        
         obj_layout.addWidget(self.mask_obj_path)
         obj_btn = QPushButton("Browse")
         obj_btn.clicked.connect(lambda: self.browse_file(self.mask_obj_path, "OBJ files (*.obj)"))
@@ -166,8 +178,7 @@ class MainWindow(QMainWindow):
         
         # STP file
         stp_layout = QHBoxLayout()
-        stp_layout.addWidget(QLabel("STP File:"))
-        self.mask_stp_path = QLineEdit("objects/obt_LG.stp")
+        stp_layout.addWidget(QLabel("STP File:"))        
         stp_layout.addWidget(self.mask_stp_path)
         stp_btn = QPushButton("Browse")
         stp_btn.clicked.connect(lambda: self.browse_file(self.mask_stp_path, "STEP files (*.stp)"))
@@ -176,15 +187,14 @@ class MainWindow(QMainWindow):
         
         # Radius
         radius_layout = QHBoxLayout()
-        radius_layout.addWidget(QLabel("Sphere Radius:"))
-        self.radius_input = QLineEdit("50000")
+        radius_layout.addWidget(QLabel("Sphere Radius:"))        
         radius_layout.addWidget(self.radius_input)
         layout.addLayout(radius_layout)
         
         # Output directory
         outdir_layout = QHBoxLayout()
         outdir_layout.addWidget(QLabel("Output Directory:"))
-        self.mask_outdir = QLineEdit(datetime.now().strftime("%Y-%m-%d-%H-%M"))
+        
         outdir_layout.addWidget(self.mask_outdir)
         layout.addLayout(outdir_layout)
         
@@ -203,8 +213,7 @@ class MainWindow(QMainWindow):
         
         # OBJ file
         obj_layout = QHBoxLayout()
-        obj_layout.addWidget(QLabel("OBJ File:"))
-        self.plots_obj_path = QLineEdit("objects/base.obj")
+        obj_layout.addWidget(QLabel("OBJ File:"))        
         obj_layout.addWidget(self.plots_obj_path)
         obj_btn = QPushButton("Browse")
         obj_btn.clicked.connect(lambda: self.browse_file(self.plots_obj_path, "OBJ files (*.obj)"))
@@ -213,8 +222,7 @@ class MainWindow(QMainWindow):
         
         # STP file
         stp_layout = QHBoxLayout()
-        stp_layout.addWidget(QLabel("STP File:"))
-        self.plots_stp_path = QLineEdit("objects/base.stp")
+        stp_layout.addWidget(QLabel("STP File:"))        
         stp_layout.addWidget(self.plots_stp_path)
         stp_btn = QPushButton("Browse")
         stp_btn.clicked.connect(lambda: self.browse_file(self.plots_stp_path, "STEP files (*.stp)"))
@@ -223,8 +231,7 @@ class MainWindow(QMainWindow):
         
         # Mask file
         mask_layout = QHBoxLayout()
-        mask_layout.addWidget(QLabel("Mask File:"))
-        self.mask_path = QLineEdit("")
+        mask_layout.addWidget(QLabel("Mask File:"))        
         mask_layout.addWidget(self.mask_path)
         mask_btn = QPushButton("Browse")
         mask_btn.clicked.connect(lambda: self.browse_file(self.mask_path, "OBJ files (*.obj)"))
@@ -234,11 +241,15 @@ class MainWindow(QMainWindow):
         # Output directory
         outdir_layout = QHBoxLayout()
         outdir_layout.addWidget(QLabel("Output Directory:"))
-        self.plots_outdir = QLineEdit(datetime.now().strftime("%Y-%m-%d-%H-%M"))
+        
         outdir_layout.addWidget(self.plots_outdir)
         layout.addLayout(outdir_layout)
         
         layout.addStretch()
+
+    def update_mask_path(self):
+        self.plots_outdir.setText( str(Path(self.mask_path.text()).parent) )
+        
     
     def browse_file(self, line_edit, file_filter):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", file_filter)
@@ -287,6 +298,7 @@ class MainWindow(QMainWindow):
         self.worker.start()
     
     def update_progress(self, message):
+        print("message ", message)
         self.progress_text.setText(message)
         QApplication.processEvents()
     
@@ -296,7 +308,7 @@ class MainWindow(QMainWindow):
         if success:
             self.progress_text.setText(f"Task completed successfully! Output saved to: {result}")
             self.current_output_dir = result
-            self.check_output_directory()
+            # self.check_output_directory()
             QMessageBox.information(self, "Success", f"Task completed successfully!\nOutput saved to: {result}")
         else:
             self.progress_text.setText(f"Task failed: {result}")
