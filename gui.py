@@ -36,6 +36,8 @@ class WorkerThread(QThread):
                 self.calculate_mask()
             elif self.task_type == "plots":
                 self.generate_plots()
+            elif self.task_type == "show":
+                self.show_plot()
         except Exception as e:
             self.finished.emit(False, f"Error: {str(e)}\n{traceback.format_exc()}")
     
@@ -99,7 +101,26 @@ class WorkerThread(QThread):
         
         self.progress.emit(f"Plots saved to: {out_path}")
         print(type(out_path))
-        self.finished.emit(True, str(out_path))
+        self.finished.emit(True, str(out_path))  
+
+    def show_plot(self):          
+        self.progress.emit("Starting plot generation...")
+
+        self.progress.emit(f"Loading mesh from: {self.params['obj']}")
+        mesh = pv.read(self.params['obj'])
+        
+        if 'mask' in self.params:
+            self.progress.emit(f"Loading mask from: {self.params['mask']}")
+            mesh_mask = pv.read(self.params['mask'])
+
+            self.progress.emit("Generating plots...")        
+            plot_mesh_mask(mesh, mesh_mask, save=False)
+        else:
+            self.progress.emit("Generating plots...")        
+            plot_mesh_mask(mesh, save=False)
+
+        self.progress.emit(f"Plots generated")
+        self.finished.emit(True, "")          
 
 
 class MainWindow(QMainWindow):
@@ -143,6 +164,12 @@ class MainWindow(QMainWindow):
         
         left_layout.addWidget(self.mode_tabs)
         
+        # Add Show button
+        self.show_button = QPushButton("Show")
+        self.show_button.clicked.connect(self.show_task)
+        self.show_button.setMinimumHeight(40)
+        left_layout.addWidget(self.show_button)
+
         # Add Run button
         self.run_button = QPushButton("Run")
         self.run_button.clicked.connect(self.run_task)
@@ -245,7 +272,7 @@ class MainWindow(QMainWindow):
         outdir_layout.addWidget(self.plots_outdir)
         layout.addLayout(outdir_layout)
         
-        layout.addStretch()
+        layout.addStretch()            
 
     def update_mask_path(self):
         self.plots_outdir.setText( str(Path(self.mask_path.text()).parent) )
@@ -260,14 +287,43 @@ class MainWindow(QMainWindow):
         directory = QFileDialog.getExistingDirectory(self, "Select Directory")
         if directory:
             line_edit.setText(directory)
-    
+
+    def show_task(self):
+        self.show_button.setEnabled(False)
+        self.progress_text.setText("Initializing...")  
+
+        # Get parameters based on active tab
+        current_tab = self.mode_tabs.currentIndex()
+        
+        if current_tab == 0:  
+            params = {
+                'obj': self.mask_obj_path.text(),
+                'stp': self.mask_stp_path.text(),
+                'radius': float(self.radius_input.text()),
+                'draw': self.draw_checkbox.isChecked(),
+                'plots': self.plots_checkbox.isChecked(),
+                'outdir': self.mask_outdir.text()
+            }
+            task_type = "show"
+        else:                
+            params = {
+                'obj': self.plots_obj_path.text(),
+                'stp': self.plots_stp_path.text(),
+                'mask': self.mask_path.text(),
+                'outdir': self.plots_outdir.text()
+            }
+            task_type = "show"
+
+        self.worker = WorkerThread(task_type, params)
+        self.worker.progress.connect(self.update_progress)
+        self.worker.finished.connect(self.show_task_finished)
+        self.worker.start()        
+
+            
     def run_task(self):
         # Disable run button during execution
         self.run_button.setEnabled(False)
-        self.progress_text.setText("Initializing...")
-        
-        # Clear existing images
-        # self.image_display.image_layout.clear()
+        self.progress_text.setText("Initializing...")                
         
         # Get parameters based on active tab
         current_tab = self.mode_tabs.currentIndex()
@@ -282,7 +338,7 @@ class MainWindow(QMainWindow):
                 'outdir': self.mask_outdir.text()
             }
             task_type = "mask"
-        else:  # Plots tab
+        else:                 # Plots tab
             params = {
                 'obj': self.plots_obj_path.text(),
                 'stp': self.plots_stp_path.text(),
@@ -303,13 +359,27 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
     
     def task_finished(self, success, result):
-        self.run_button.setEnabled(True)
+        self.run_button.setEnabled(True)        
         
         if success:
             self.progress_text.setText(f"Task completed successfully! Output saved to: {result}")
             self.current_output_dir = result
             # self.check_output_directory()
-            QMessageBox.information(self, "Success", f"Task completed successfully!\nOutput saved to: {result}")
+            # QMessageBox.information(self, "Success", f"Task completed successfully!\nOutput saved to: {result}")
+        else:
+            self.progress_text.setText(f"Task failed: {result}")
+            QMessageBox.critical(self, "Error", f"Task failed:\n{result}")
+        
+        self.worker = None
+
+    def show_task_finished(self, success, result):        
+        self.show_button.setEnabled(True)
+        
+        if success:
+            self.progress_text.setText(f"Task completed successfully!")
+            self.current_output_dir = result
+            # self.check_output_directory()
+            # QMessageBox.information(self, "Success", f"Task completed successfully!")
         else:
             self.progress_text.setText(f"Task failed: {result}")
             QMessageBox.critical(self, "Error", f"Task failed:\n{result}")

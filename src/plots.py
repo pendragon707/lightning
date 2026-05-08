@@ -213,10 +213,14 @@ def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, ste
     image_path = out_dir / f"sphere_{sphere_radius}_{step}.png"
     p.show(screenshot=image_path)  
 
-def plot_mesh_mask(mesh, mesh_mask, out_dir=None):
+def plot_mesh_mask(mesh, mesh_mask=None, out_dir=None, save=True):
     p = pv.Plotter()
     p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
+    if mesh_mask is not None:
+        p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
 
-    image_path = out_dir / "result.png"
-    p.show(screenshot=image_path)  
+    if save:
+        image_path = out_dir / "result.png"
+        p.show(screenshot=image_path)  
+    else:
+        p.show()
