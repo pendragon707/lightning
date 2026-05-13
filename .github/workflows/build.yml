@@ -24,12 +24,22 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --clean --onefile --windowed `
+          # 1. Get conda env root path
+          $envPath = conda run -n occ-build python -c "import sys; print(sys.prefix)"
+          
+          # 2. Create missing QtWebEngine locale dir (satisfies PyInstaller's path check)
+          mkdir -Force "$envPath\Library\share\qt6\translations\qtwebengine_locales"
+          
+          # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
+          conda run -n occ-build pyinstaller --clean --onedir --windowed `
             --name MyApp `
             --collect-all PySide6 `
             --collect-all OCC `
             --collect-all vtk `
+            --exclude-module PySide6.QtWebEngineCore `
+            --exclude-module PySide6.QtWebEngineWidgets `
             gui.py
+        shell: pwsh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
