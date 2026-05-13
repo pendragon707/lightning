@@ -31,7 +31,7 @@ jobs:
           mkdir -Force "$envPath\Library\share\qt6\translations\qtwebengine_locales"
           
           # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
-          conda run -n occ-build pyinstaller --clean --onedir --windowed `
+          conda run -n occ-build pyinstaller --clean --onefile --windowed `
             --name MyApp `
             --collect-all PySide6 `
             --collect-all OCC `
