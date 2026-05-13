@@ -29,7 +29,7 @@ jobs:
             --collect-all PySide6 `
             --collect-all OCC `
             --collect-all vtk `
-            your_main_script.py
+            gui.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
