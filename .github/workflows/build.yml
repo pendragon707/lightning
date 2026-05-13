@@ -16,12 +16,11 @@ jobs:
         with:
           python-version: "3.14" 
           channels: conda-forge
-          activate-environment: occ-build
-          use-mamba: true          # Drastically speeds up dependency resolution
+          activate-environment: occ-build          
 
       - name: Install dependencies
         run: |
-          mamba install -y pythonocc-core numpy scipy pyvista pyside6 pyinstaller
+          conda install -y pythonocc-core numpy scipy pyvista pyside6 pyinstaller
 
       - name: Build executable
         run: |
