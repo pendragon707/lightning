@@ -14,13 +14,13 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: "3.14" 
+          python-version: "3.9" 
           channels: conda-forge
           activate-environment: occ-build          
 
       - name: Install dependencies
         run: |
-          conda install -y pythonocc-core numpy scipy pyvista pyside6 pyinstaller
+          conda install -y numpy scipy pyvista PySide2 pyinstaller
 
       - name: Build executable
         run: |
@@ -33,11 +33,10 @@ jobs:
           # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
           conda run -n occ-build pyinstaller --clean --onefile --windowed `
             --name MyApp `
-            --collect-all PySide6 `
-            --collect-all OCC `
+            --collect-all PySide2 `            
             --collect-all vtk `
-            --exclude-module PySide6.QtWebEngineCore `
-            --exclude-module PySide6.QtWebEngineWidgets `
+            --exclude-module PySide2.QtWebEngineCore `
+            --exclude-module PySide2.QtWebEngineWidgets `
             gui.py
         shell: pwsh
 

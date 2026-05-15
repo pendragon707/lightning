@@ -8,13 +8,13 @@ matplotlib.use('Agg')
 
 from pathlib import Path
 
-from OCC.Core.STEPControl import STEPControl_Reader
-from OCC.Core.IFSelect import IFSelect_RetDone
-from OCC.Core.TopExp import TopExp_Explorer
-from OCC.Core.TopAbs import TopAbs_EDGE
-from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
-from OCC.Core.GCPnts import GCPnts_UniformAbscissa
-from OCC.Core.TopoDS import TopoDS_Edge, topods
+# from OCC.Core.STEPControl import STEPControl_Reader
+# from OCC.Core.IFSelect import IFSelect_RetDone
+# from OCC.Core.TopExp import TopExp_Explorer
+# from OCC.Core.TopAbs import TopAbs_EDGE
+# from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
+# from OCC.Core.GCPnts import GCPnts_UniformAbscissa
+# from OCC.Core.TopoDS import TopoDS_Edge, topods
 
 def extract_edge_points(shape, samples_per_edge=80):
     """Extract 3D point arrays from all edges in the model."""
