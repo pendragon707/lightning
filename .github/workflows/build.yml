@@ -33,7 +33,7 @@ jobs:
           # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
           conda run -n occ-build pyinstaller --clean --onefile --windowed `
             --name MyApp `
-            --collect-all PySide2 `            
+            --collect-all PySide2 `
             --collect-all vtk `
             --exclude-module PySide2.QtWebEngineCore `
             --exclude-module PySide2.QtWebEngineWidgets `
