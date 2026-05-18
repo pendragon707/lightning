@@ -31,7 +31,7 @@ jobs:
           mkdir -Force "$envPath\Library\share\qt6\translations\qtwebengine_locales"
           
           # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
-          conda run -n occ-build pyinstaller --clean --onefile --windowed `
+          conda run -n occ-build pyinstaller --clean --onedir --windowed `
             --name MyApp `
             --collect-all PySide2 `
             --collect-all vtk `
@@ -45,3 +45,4 @@ jobs:
         with:
           name: Windows-Executable
           path: dist/MyApp.exe
+          if-no-files-found: error
