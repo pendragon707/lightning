@@ -37,6 +37,7 @@ jobs:
             --collect-all vtk `
             --exclude-module PySide2.QtWebEngineCore `
             --exclude-module PySide2.QtWebEngineWidgets `
+            --hidden-import=src `
             gui.py
         shell: pwsh
 
