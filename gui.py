@@ -38,10 +38,10 @@ class WorkerThread(QThread):
             elif self.task_type == "show":
                 self.show_plot()                
         except Exception as e:
-            self.finished.emit(False, f"Ошибка: {str(e)}\n{traceback.format_exc()}")
+            self.finished.emit(False, f"Error: {str(e)}\n{traceback.format_exc()}")
     
     def calculate_mask(self):
-        self.progress.emit("Расчёт молниеопасных зон...")
+        self.progress.emit("Calculate...")
         
         # Prepare output directory
         out_path = Path(os.getcwd()) / "out" / self.params['outdir']
@@ -79,22 +79,22 @@ class WorkerThread(QThread):
         self.finished.emit(True, out_path)
     
     def show_plot(self):          
-        self.progress.emit("Начало генерации графиков...")
+        self.progress.emit("Generate plots...")
 
-        self.progress.emit(f"Загружается модель (*.obj): {self.params['obj']}")
+        self.progress.emit(f"Load model (*.obj): {self.params['obj']}")
         mesh = pv.read(self.params['obj'])
         
         if 'mask' in self.params:
-            self.progress.emit(f"Загружена маска из: {self.params['mask']}")
+            self.progress.emit(f"Load mask: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
 
-            self.progress.emit("Генерация графиков...")        
+            self.progress.emit("Generate plots...")        
             plot_mesh_mask(mesh, mesh_mask, save=False)
         else:
-            self.progress.emit("Генерация графиков...")        
+            self.progress.emit("Generate plots...")        
             plot_mesh_mask(mesh, save=False)
 
-        self.progress.emit(f"Графики построены")
+        self.progress.emit(f"Plots finished")
         self.finished.emit(True, "")  
 
     def generate_plots(self):
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
 
                 
         # Add Show button
-        self.show_button = QPushButton("Просмотр")
+        self.show_button = QPushButton("Show")
         self.show_button.clicked.connect(self.show_task)
         self.show_button.setMinimumHeight(40)
         left_layout.addWidget(self.show_button)
@@ -365,13 +365,13 @@ class MainWindow(QMainWindow):
         self.run_button.setEnabled(True)
         
         if success:
-            self.progress_text.setText(f"Задача выполнена успешно! Результат сохранён в: {result}")
+            self.progress_text.setText(f"Tack completed! The result saved: {result}")
             self.current_output_dir = result
             # self.check_output_directory()
-            # QMessageBox.information(self, "Успех", f"Task completed successfully!\nOutput saved to: {result}")
+            # QMessageBox.information(self, "Success", f"Task completed successfully!\nOutput saved to: {result}")
         else:
             self.progress_text.setText(f"Task failed: {result}")
-            QMessageBox.critical(self, "Ошибка", f"Task failed:\n{result}")
+            QMessageBox.critical(self, "Error", f"Task failed:\n{result}")
         
         self.worker = None
 
@@ -379,13 +379,13 @@ class MainWindow(QMainWindow):
         self.show_button.setEnabled(True)
         
         if success:
-            self.progress_text.setText(f"Задача выполнена успешно!")
+            self.progress_text.setText(f"Tack completed!")
             self.current_output_dir = result
             # self.check_output_directory()
-            # QMessageBox.information(self, "Success", f"Задача выполнена успешно!")
+            # QMessageBox.information(self, "Success", f"Tack completed!")
         else:
-            self.progress_text.setText(f"Задача не выполнена: {result}")
-            QMessageBox.critical(self, "Ошибка", f"Задача не выполнена:\n{result}")
+            self.progress_text.setText(f"Task failed: {result}")
+            QMessageBox.critical(self, "Error", f"Task failed:\n{result}")
         
         self.worker = None
 
