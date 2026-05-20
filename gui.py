@@ -2,8 +2,14 @@
 import sys
 import os
 from pathlib import Path
+import shutil
+
+import argparse
 from datetime import datetime
 import traceback
+
+import pyvista as pv
+import numpy as np
 
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QPushButton, QLabel, QLineEdit, 
@@ -11,11 +17,6 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QScrollArea, QMessageBox, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QPixmap, QFont
-
-import pyvista as pv
-import numpy as np
-from pathlib import Path
-import argparse
 
 from src import find_accessible_surface, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask
@@ -65,6 +66,15 @@ class WorkerThread(QThread):
         save_path = out_path / "accessible_fragment.obj"
         accessible_mesh.save(save_path)
         self.progress.emit(f"Маска сохранена в: {save_path}")
+
+        # Save original files
+        save_obj_path = out_path / Path(self.params['obj']).name
+        print(save_obj_path)
+        shutil.copy(self.params['obj'], save_obj_path)
+
+        save_stp_path = out_path / Path(self.params['stp']).name
+        print(save_stp_path)
+        shutil.copy(self.params['stp'], save_stp_path)        
         
         # Generate plots if requested
         if self.params['plots']:
@@ -73,9 +83,9 @@ class WorkerThread(QThread):
             plot_mesh_with_projections(accessible_mesh, shape, out_dir=out_path)
             plot_mesh_mask(result, accessible_mesh, out_dir=out_path)
             get_2d_mask(accessible_mesh, out_dir=out_path)
-            self.progress.emit(f"Графики сохранены в: {out_path}")
+            self.progress.emit(f"Графики сохранены в: { out_path}")
         
-        self.finished.emit(True, out_path)
+        self.finished.emit(True, str(out_path))
     
     def generate_plots(self):
         self.progress.emit("Начало генерации графиков...")
