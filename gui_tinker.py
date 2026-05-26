@@ -1,0 +1,435 @@
+import sys
+import os
+from pathlib import Path
+import shutil
+import argparse
+from datetime import datetime
+import traceback
+import threading
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import queue
+
+import pyvista as pv
+import numpy as np
+
+from src import find_accessible_surface, load_step, get_accessible_mesh
+from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask
+
+class WorkerThread(threading.Thread):
+    """Worker thread for running calculations without freezing the UI"""
+    
+    def __init__(self, task_type, params, progress_callback, finished_callback):
+        super().__init__()
+        self.task_type = task_type
+        self.params = params
+        self.progress_callback = progress_callback
+        self.finished_callback = finished_callback
+        self.daemon = True
+        
+    def run(self):
+        try:
+            if self.task_type == "mask":
+                self.calculate_mask()
+            elif self.task_type == "plots":
+                self.generate_plots()
+            elif self.task_type == "show":
+                self.show_plot()
+        except Exception as e:
+            self.finished_callback(False, f"Ошибка: {str(e)}\n{traceback.format_exc()}")
+    
+    def calculate_mask(self):
+        self.progress_callback("Начало расчета маски...")
+        
+        # Prepare output directory
+        out_path = Path(os.getcwd()) / "out" / self.params['outdir']
+        out_path.mkdir(parents=True, exist_ok=True)
+        
+        self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
+        self.progress_callback(f"Используется радиус сферы: {self.params['radius']}")
+        
+        # Calculate mask
+        result, centers = find_accessible_surface(
+            self.params['obj'], 
+            sphere_radius=self.params['radius'], 
+            render=self.params['draw'], 
+            out_dir=out_path
+        )
+                
+        accessible_mesh = get_accessible_mesh(result)
+        
+        # Save result
+        save_path = out_path / "accessible_fragment.obj"
+        accessible_mesh.save(save_path)
+        self.progress_callback(f"Маска сохранена в: {save_path}")
+
+        # Save original files
+        save_obj_path = out_path / Path(self.params['obj']).name
+        print(save_obj_path)
+        shutil.copy(self.params['obj'], save_obj_path)
+
+        save_stp_path = out_path / Path(self.params['stp']).name
+        print(save_stp_path)
+        shutil.copy(self.params['stp'], save_stp_path)        
+        
+        # Generate plots if requested
+        if self.params['plots']:
+            self.progress_callback("Генерация графиков...")
+            shape = load_step(self.params['stp'])
+            plot_mesh_with_projections(accessible_mesh, shape, out_dir=out_path)
+            plot_mesh_mask(result, accessible_mesh, out_dir=out_path)
+            get_2d_mask(accessible_mesh, out_dir=out_path)
+            self.progress_callback(f"Графики сохранены в: {out_path}")
+        
+        self.finished_callback(True, str(out_path))
+    
+    def generate_plots(self):
+        self.progress_callback("Начало генерации графиков...")
+        
+        # Prepare output directory
+        out_path = Path(os.getcwd()) / "out" / self.params['outdir']
+        out_path.mkdir(parents=True, exist_ok=True)
+        
+        self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
+        mesh = pv.read(self.params['obj'])
+        
+        self.progress_callback(f"Загружается маска: {self.params['mask']}")
+        mesh_mask = pv.read(self.params['mask'])
+        
+        self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
+        shape = load_step(self.params['stp'])
+        
+        self.progress_callback("Генерация графиков...")
+        plot_mesh_with_projections(mesh_mask, shape, out_dir=out_path)
+        plot_mesh_mask(mesh, mesh_mask, out_dir=out_path)
+        get_2d_mask(mesh_mask, out_dir=out_path)
+        
+        self.progress_callback(f"Графики сохранены в: {out_path}")
+        print(type(out_path))
+        self.finished_callback(True, str(out_path))  
+
+    def show_plot(self):          
+        self.progress_callback("Начало генерации графиков...")
+
+        self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
+        mesh = pv.read(self.params['obj'])
+        
+        if 'mask' in self.params:
+            self.progress_callback(f"Загружена маска из: {self.params['mask']}")
+            mesh_mask = pv.read(self.params['mask'])
+
+            self.progress_callback("Генерация графиков...")        
+            plot_mesh_mask(mesh, mesh_mask, save=False)
+        else:
+            self.progress_callback("Генерация графиков...")        
+            plot_mesh_mask(mesh, save=False)
+
+        self.progress_callback(f"Графики построены")
+        self.finished_callback(True, "")          
+
+
+class MainWindow:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Расчет молниеопасных зон")
+        self.root.geometry("900x600")
+        
+        # Create main frame
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Left panel for controls
+        left_panel = ttk.Frame(main_frame)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        
+        # Create notebook (tab widget)
+        self.mode_notebook = ttk.Notebook(left_panel)
+        self.mode_notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Create tabs
+        self.mask_tab = ttk.Frame(self.mode_notebook)
+        self.plots_tab = ttk.Frame(self.mode_notebook)
+        self.mode_notebook.add(self.mask_tab, text="Расчет молниеопасных зон")
+        self.mode_notebook.add(self.plots_tab, text="Построение графиков")
+        
+        # Initialize variables
+        self.mask_obj_path = tk.StringVar(value="objects/obt_LG.obj")
+        self.mask_stp_path = tk.StringVar(value="objects/obt_LG.stp")
+        self.radius_input = tk.StringVar(value="50000")
+        self.mask_outdir = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d-%H-%M"))
+        
+        self.plots_obj_path = tk.StringVar(value="objects/base.obj")
+        self.plots_stp_path = tk.StringVar(value="objects/base.stp")
+        self.mask_path = tk.StringVar(value="out/base/accessible_fragment.obj")
+        self.plots_outdir = tk.StringVar(value=str(Path(self.mask_path.get()).parent))
+        
+        # Setup tabs
+        self.setup_mask_tab()
+        self.setup_plots_tab()
+        
+        # Buttons
+        button_frame = ttk.Frame(left_panel)
+        button_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.show_button = ttk.Button(button_frame, text="Просмотр", command=self.show_task)
+        self.show_button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        self.run_button = ttk.Button(button_frame, text="Запустить", command=self.run_task)
+        self.run_button.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Progress display
+        self.progress_text = tk.Text(left_panel, height=10, wrap=tk.WORD)
+        self.progress_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Scrollbar for progress text
+        scrollbar = ttk.Scrollbar(self.progress_text, command=self.progress_text.yview)
+        self.progress_text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Progress bar
+        self.progress_bar = ttk.Progressbar(left_panel, mode='indeterminate')
+        self.progress_bar.pack(fill=tk.X, pady=(5, 0))
+        
+        # Worker thread
+        self.worker = None
+        self.message_queue = queue.Queue()
+        
+        # Start checking the queue
+        self.check_queue()
+        
+        # Bind mask_path change
+        self.mask_path.trace_add('write', self.update_mask_path)
+    
+    def setup_mask_tab(self):
+        # Create scrollable frame
+        canvas = tk.Canvas(self.mask_tab)
+        scrollbar = ttk.Scrollbar(self.mask_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # OBJ file
+        obj_frame = ttk.Frame(scrollable_frame)
+        obj_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(obj_frame, text="Модель (*.obj):").pack(side=tk.LEFT)
+        obj_entry = ttk.Entry(obj_frame, textvariable=self.mask_obj_path)
+        obj_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(obj_frame, text="Найти", 
+                  command=lambda: self.browse_file(self.mask_obj_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
+        
+        # STP file
+        stp_frame = ttk.Frame(scrollable_frame)
+        stp_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(stp_frame, text="Модель (*.stp):").pack(side=tk.LEFT)
+        stp_entry = ttk.Entry(stp_frame, textvariable=self.mask_stp_path)
+        stp_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(stp_frame, text="Найти",
+                  command=lambda: self.browse_file(self.mask_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
+        
+        # Radius
+        radius_frame = ttk.Frame(scrollable_frame)
+        radius_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(radius_frame, text="Радиус сферы:").pack(side=tk.LEFT)
+        radius_entry = ttk.Entry(radius_frame, textvariable=self.radius_input)
+        radius_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # Output directory
+        outdir_frame = ttk.Frame(scrollable_frame)
+        outdir_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(outdir_frame, text="Директория сохранения:").pack(side=tk.LEFT)
+        outdir_entry = ttk.Entry(outdir_frame, textvariable=self.mask_outdir)
+        outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # Options
+        self.draw_var = tk.BooleanVar(value=False)
+        draw_checkbox = ttk.Checkbutton(scrollable_frame, text="Отобразить сферу", 
+                                        variable=self.draw_var)
+        draw_checkbox.pack(anchor=tk.W, pady=5)
+        
+        self.plots_var = tk.BooleanVar(value=True)
+        plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
+                                         variable=self.plots_var)
+        plots_checkbox.pack(anchor=tk.W, pady=5)
+    
+    def setup_plots_tab(self):
+        # Create scrollable frame
+        canvas = tk.Canvas(self.plots_tab)
+        scrollbar = ttk.Scrollbar(self.plots_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # OBJ file
+        obj_frame = ttk.Frame(scrollable_frame)
+        obj_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(obj_frame, text="Модель (*.obj):").pack(side=tk.LEFT)
+        obj_entry = ttk.Entry(obj_frame, textvariable=self.plots_obj_path)
+        obj_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(obj_frame, text="Найти",
+                  command=lambda: self.browse_file(self.plots_obj_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
+        
+        # STP file
+        stp_frame = ttk.Frame(scrollable_frame)
+        stp_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(stp_frame, text="Модель (*.stp):").pack(side=tk.LEFT)
+        stp_entry = ttk.Entry(stp_frame, textvariable=self.plots_stp_path)
+        stp_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(stp_frame, text="Найти",
+                  command=lambda: self.browse_file(self.plots_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
+        
+        # Mask file
+        mask_frame = ttk.Frame(scrollable_frame)
+        mask_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(mask_frame, text="Маска молниеопасных зон:").pack(side=tk.LEFT)
+        mask_entry = ttk.Entry(mask_frame, textvariable=self.mask_path)
+        mask_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        ttk.Button(mask_frame, text="Найти",
+                  command=lambda: self.browse_file(self.mask_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
+        
+        # Output directory
+        outdir_frame = ttk.Frame(scrollable_frame)
+        outdir_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(outdir_frame, text="Директория сохранения:").pack(side=tk.LEFT)
+        outdir_entry = ttk.Entry(outdir_frame, textvariable=self.plots_outdir)
+        outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+    
+    def update_mask_path(self, *args):
+        self.plots_outdir.set(str(Path(self.mask_path.get()).parent))
+    
+    def browse_file(self, string_var, file_filter):
+        file_path = filedialog.askopenfilename(title="Выбрать файл", filetypes=[(file_filter, "*.*")])
+        if file_path:
+            string_var.set(file_path)
+    
+    def update_progress(self, message):
+        self.message_queue.put(("progress", message))
+    
+    def task_finished(self, success, result):
+        self.message_queue.put(("finished", (success, result)))
+    
+    def check_queue(self):
+        try:
+            while True:
+                msg_type, msg_data = self.message_queue.get_nowait()
+                
+                if msg_type == "progress":
+                    self.progress_text.insert(tk.END, msg_data + "\n")
+                    self.progress_text.see(tk.END)
+                    self.root.update_idletasks()
+                
+                elif msg_type == "finished":
+                    success, result = msg_data
+                    self.run_button.config(state=tk.NORMAL)
+                    self.show_button.config(state=tk.NORMAL)
+                    self.progress_bar.stop()
+                    
+                    if success:
+                        self.progress_text.insert(tk.END, f"Задача выполнена успешно! Результат сохранён в: {result}\n")
+                        self.progress_text.see(tk.END)
+                        if result:
+                            messagebox.showinfo("Успех", f"Задача выполнена успешно!\nРезультат сохранён в: {result}")
+                    else:
+                        self.progress_text.insert(tk.END, f"Задача не выполнена: {result}\n")
+                        self.progress_text.see(tk.END)
+                        messagebox.showerror("Ошибка", f"Задача не выполнена:\n{result}")
+                    
+                    self.worker = None
+        
+        except queue.Empty:
+            pass
+        finally:
+            self.root.after(100, self.check_queue)
+    
+    def show_task(self):
+        self.show_button.config(state=tk.DISABLED)
+        self.run_button.config(state=tk.DISABLED)
+        self.progress_bar.start()
+        self.update_progress("Инициализация...")
+        
+        # Get parameters based on active tab
+        current_tab = self.mode_notebook.index(self.mode_notebook.select())
+        
+        if current_tab == 0:  # Mask tab
+            params = {
+                'obj': self.mask_obj_path.get(),
+                'stp': self.mask_stp_path.get(),
+                'radius': float(self.radius_input.get()),
+                'draw': self.draw_var.get(),
+                'plots': self.plots_var.get(),
+                'outdir': self.mask_outdir.get()
+            }
+            task_type = "show"
+        else:  # Plots tab
+            params = {
+                'obj': self.plots_obj_path.get(),
+                'stp': self.plots_stp_path.get(),
+                'mask': self.mask_path.get(),
+                'outdir': self.plots_outdir.get()
+            }
+            task_type = "show"
+        
+        self.worker = WorkerThread(task_type, params, self.update_progress, self.task_finished)
+        self.worker.start()
+    
+    def run_task(self):
+        # Disable buttons during execution
+        self.run_button.config(state=tk.DISABLED)
+        self.show_button.config(state=tk.DISABLED)
+        self.progress_bar.start()
+        self.update_progress("Инициализация...")
+        
+        # Get parameters based on active tab
+        current_tab = self.mode_notebook.index(self.mode_notebook.select())
+        
+        if current_tab == 0:  # Mask tab
+            params = {
+                'obj': self.mask_obj_path.get(),
+                'stp': self.mask_stp_path.get(),
+                'radius': float(self.radius_input.get()),
+                'draw': self.draw_var.get(),
+                'plots': self.plots_var.get(),
+                'outdir': self.mask_outdir.get()
+            }
+            task_type = "mask"
+        else:  # Plots tab
+            params = {
+                'obj': self.plots_obj_path.get(),
+                'stp': self.plots_stp_path.get(),
+                'mask': self.mask_path.get(),
+                'outdir': self.plots_outdir.get()
+            }
+            task_type = "plots"
+        
+        # Start worker thread
+        self.worker = WorkerThread(task_type, params, self.update_progress, self.task_finished)
+        self.worker.start()
+    
+    def run(self):
+        self.root.mainloop()
+
+
+def main():
+    app = MainWindow()
+    app.run()
+
+
+if __name__ == "__main__":
+    main()
