@@ -1,10 +1,51 @@
 import pyvista as pv
 import numpy as np
-from scipy.spatial import cKDTree
-
 import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
+from scipy.spatial.distance import cdist
+
+from functools import partial
+from multiprocessing import Pool, cpu_count
 
 from src import draw_sphere
+
+def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
+    """Process a chunk of points in parallel"""
+    centers_chunk = points_chunk + normals_chunk * sphere_radius
+    # Optimize: reduce k to 1 + use radius search
+    # We only need nearest neighbor distance
+    dists, _ = tree.query(centers_chunk, k=1, workers=1)  # workers=1 because we're already parallelizing
+    return dists >= (sphere_radius - tol)
+
+def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_workers=None, render = False, out_dir=None):
+    """Parallel version using multiprocessing"""
+    mesh = pv.read(mesh_path)
+    mesh.clean(inplace=True)
+    mesh.compute_normals(cell_normals=False, point_normals=True, inplace=True)
+    
+    points = mesh.points
+    normals = mesh['Normals']
+    
+    # Build optimized KDTree
+    tree = cKDTree(points, balanced_tree=True, compact_nodes=True)
+    
+    # Split into chunks for parallel processing
+    n_workers = n_workers or cpu_count()
+    chunks = np.array_split(np.arange(len(points)), n_workers)
+    
+    # Prepare arguments for parallel processing
+    args = [(points[chunk], normals[chunk], tree, sphere_radius, tol) 
+            for chunk in chunks]
+    
+    # Parallel execution
+    with Pool(n_workers) as pool:
+        results = pool.starmap(process_chunk, args)
+    
+    # Combine results
+    accessible = np.concatenate(results)
+    mesh['accessible'] = accessible.astype(float)
+    
+    return mesh
 
 def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False, out_dir=None):
     """

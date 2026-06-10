@@ -13,7 +13,8 @@ import queue
 import pyvista as pv
 import numpy as np
 
-from src import find_accessible_surface, load_step, get_accessible_mesh
+# from src import find_accessible_surface, load_step, get_accessible_mesh
+from src import find_accessible_surface_parallel, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask
 
 class WorkerThread(threading.Thread):
@@ -49,7 +50,8 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Используется радиус сферы: {self.params['radius']}")
         
         # Calculate mask
-        result, centers = find_accessible_surface(
+        # result, centers = find_accessible_surface(
+        result, centers = find_accessible_surface_parallel(
             self.params['obj'], 
             sphere_radius=self.params['radius'], 
             render=self.params['draw'], 
@@ -132,7 +134,7 @@ class MainWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Расчет молниеопасных зон")
-        self.root.geometry("900x600")
+        self.root.geometry("500x600")
         
         # Create main frame
         main_frame = ttk.Frame(self.root)

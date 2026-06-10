@@ -14,3 +14,17 @@ Start gui:
 conda activate occ
 python gui.py
 ```
+
+
+reqs:
+
+```
+conda install pythonocc-core
+conda install -c conda-forge wxpython
+```
+
+```
+conda create -n open3d_env python=3.12
+conda activate open3d_env
+conda install -c conda-forge open3d
+```
