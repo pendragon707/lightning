@@ -15,7 +15,7 @@ import numpy as np
 
 # from src import find_accessible_surface, load_step, get_accessible_mesh
 from src import find_accessible_surface_parallel, load_step, get_accessible_mesh
-from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask
+from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
 
 class WorkerThread(threading.Thread):
     """Worker thread for running calculations without freezing the UI"""
@@ -53,11 +53,9 @@ class WorkerThread(threading.Thread):
         # result, centers = find_accessible_surface(
         result, centers = find_accessible_surface_parallel(
             self.params['obj'], 
-            sphere_radius=self.params['radius'], 
-            render=self.params['draw'], 
-            out_dir=out_path
+            sphere_radius=self.params['radius']
         )
-                
+
         accessible_mesh = get_accessible_mesh(result)
         
         # Save result
@@ -75,8 +73,10 @@ class WorkerThread(threading.Thread):
         shutil.copy(self.params['stp'], save_stp_path)        
         
         # Generate plots if requested
-        if self.params['plots']:
-            self.progress_callback("Генерация графиков...")
+        if self.params['plots']:  
+            self.progress_callback("Генерация графиков...")      
+            draw_sphere(self.params['obj'], self.params['radius'], centers[3], out_dir=out_path)
+            
             shape = load_step(self.params['stp'])
             plot_mesh_with_projections(accessible_mesh, shape, out_dir=out_path)
             plot_mesh_mask(result, accessible_mesh, out_dir=out_path)
@@ -252,10 +252,10 @@ class MainWindow:
         outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         # Options
-        self.draw_var = tk.BooleanVar(value=False)
-        draw_checkbox = ttk.Checkbutton(scrollable_frame, text="Отобразить сферу", 
-                                        variable=self.draw_var)
-        draw_checkbox.pack(anchor=tk.W, pady=5)
+        # self.draw_var = tk.BooleanVar(value=False)
+        # draw_checkbox = ttk.Checkbutton(scrollable_frame, text="Отобразить сферу", 
+        #                                 variable=self.draw_var)
+        # draw_checkbox.pack(anchor=tk.W, pady=5)
         
         self.plots_var = tk.BooleanVar(value=True)
         plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
@@ -374,7 +374,6 @@ class MainWindow:
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
-                'draw': self.draw_var.get(),
                 'plots': self.plots_var.get(),
                 'outdir': self.mask_outdir.get()
             }
@@ -406,7 +405,6 @@ class MainWindow:
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
-                'draw': self.draw_var.get(),
                 'plots': self.plots_var.get(),
                 'outdir': self.mask_outdir.get()
             }

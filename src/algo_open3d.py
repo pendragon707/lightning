@@ -267,7 +267,8 @@ def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, tol=1e-3, 
 
 if __name__ == "__main__":
     # Path to your mesh
-    path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
+    # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
+    path = "/home/none/Projects/light/objects/obt_LG.obj"
     radius = 50000  # Sphere radius in same units as mesh
     
     print("Starting accessible surface detection...")

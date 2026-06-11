@@ -201,7 +201,10 @@ def convert_polydata_to_matplotlib(mesh, view="top"):
     
     return x, y, x_label, y_label
 
-def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, step=0):
+def draw_sphere(mesh_path, sphere_radius, center, mesh_mask = None, out_dir=None, step=0):
+    mesh = pv.read(mesh_path)
+    mesh.clean(inplace=True)    
+
     sphere = pv.Sphere(radius=sphere_radius, center=center)
 
     p = pv.Plotter()
@@ -213,7 +216,7 @@ def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, ste
     image_path = out_dir / f"sphere_{sphere_radius}_{step}.png"
     p.show(screenshot=image_path)  
 
-def plot_mesh_mask(mesh, mesh_mask=None, out_dir=None, save=True):
+def plot_mesh_mask(mesh, mesh_mask=None, out_dir=None, save=True):    
     p = pv.Plotter()
     p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
     if mesh_mask is not None:

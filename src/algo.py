@@ -7,8 +7,6 @@ from scipy.spatial.distance import cdist
 from functools import partial
 from multiprocessing import Pool, cpu_count
 
-# from src import draw_sphere
-
 def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     """Process a chunk of points in parallel"""
     centers_chunk = points_chunk + normals_chunk * sphere_radius
@@ -22,7 +20,7 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
     return accessible_chunk
 
-def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_workers=None, render = False, out_dir=None):
+def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
@@ -70,7 +68,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_worke
     
     return mesh, centers
 
-def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False, out_dir=None):
+def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3):
     """
     Finds surface fragments where a sphere of fixed radius can touch 
     without intersecting or penetrating the mesh elsewhere.
@@ -98,10 +96,6 @@ def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False, 
     
     # 4. Candidate sphere centers (r units along the normal)
     centers = points + normals * sphere_radius
-
-    if render:
-        pass
-        # draw_sphere(mesh, sphere_radius, centers[3], out_dir=out_dir)
     
     # 5. Query distances: k=2 because the nearest point will be the contact vertex itself
     dists, _ = tree.query(centers, k=2)
