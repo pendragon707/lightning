@@ -57,6 +57,7 @@ class WorkerThread(QThread):
             self.params['obj'], 
             sphere_radius=self.params['radius'], 
             render=self.params['draw'], 
+            normals_flag=self.params['normals'],
             out_dir=out_path
         )
                 
@@ -118,6 +119,11 @@ class WorkerThread(QThread):
         self.progress.emit(f"Загружается модель (*.obj): {self.params['obj']}")
         mesh = pv.read(self.params['obj'])
         
+        # After loading mesh
+        self.progress.emit(f"Number of connected components: {mesh.n_blocks}")
+        self.progress.emit(f"Is watertight? {mesh.is_watertight}")
+        self.progress.emit(f"Has normals? {'Normals' in mesh.array_names}")
+
         if 'mask' in self.params:
             self.progress.emit(f"Загружена маска из: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
@@ -237,6 +243,9 @@ class MainWindow(QMainWindow):
         # Options
         self.draw_checkbox = QCheckBox("Отобразить сферу")
         layout.addWidget(self.draw_checkbox)
+
+        self.normals_checkbox = QCheckBox("Отобразить нормали")
+        layout.addWidget(self.normals_checkbox)        
         
         self.plots_checkbox = QCheckBox("Построение графиков")
         self.plots_checkbox.setChecked(True)
@@ -310,6 +319,7 @@ class MainWindow(QMainWindow):
                 'stp': self.mask_stp_path.text(),
                 'radius': float(self.radius_input.text()),
                 'draw': self.draw_checkbox.isChecked(),
+                'normals': self.normals_checkbox.isChecked(),
                 'plots': self.plots_checkbox.isChecked(),
                 'outdir': self.mask_outdir.text()
             }
@@ -343,6 +353,7 @@ class MainWindow(QMainWindow):
                 'stp': self.mask_stp_path.text(),
                 'radius': float(self.radius_input.text()),
                 'draw': self.draw_checkbox.isChecked(),
+                'normals': self.normals_checkbox.isChecked(),
                 'plots': self.plots_checkbox.isChecked(),
                 'outdir': self.mask_outdir.text()
             }

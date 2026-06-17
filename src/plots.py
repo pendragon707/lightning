@@ -201,11 +201,20 @@ def convert_polydata_to_matplotlib(mesh, view="top"):
     
     return x, y, x_label, y_label
 
-def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, step=0):
-    sphere = pv.Sphere(radius=sphere_radius, center=center)
+def draw_sphere(mesh, sphere_radius, centers, mesh_mask = None, out_dir=None,  normals=True, step=0):
+    sphere = pv.Sphere(radius=sphere_radius, center=centers[step])
 
     p = pv.Plotter()
     p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
+
+    if normals:
+        step = max(1, len(mesh.points) // 50)
+        p.add_arrows(mesh.points[::step], mesh['Normals'][::step], 
+                    mag=sphere_radius * 0.5, color='red', label='Normals', line_width=0.5)
+
+        p.add_points(centers[::step], color='green', point_size=5, 
+                        label='Sphere Centers')                 
+
     if mesh_mask is not None:
         p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
     p.add_mesh(sphere, color='blue', show_edges=False, smooth_shading=True, opacity=0.3, label='Sphere')
@@ -215,9 +224,11 @@ def draw_sphere(mesh, sphere_radius, center, mesh_mask = None, out_dir=None, ste
 
 def plot_mesh_mask(mesh, mesh_mask=None, out_dir=None, save=True):
     p = pv.Plotter()
-    p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
+    # p.add_mesh(mesh, show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
+    p.add_mesh(mesh, show_edges=True, smooth_shading=True, opacity=0.3, label='Full Mesh')
+    p.add_arrows(mesh.points[::10], mesh['Normals'][::10], mag=0.2, color='red')
     if mesh_mask is not None:
-        p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
+        p.add_mesh(mesh_mask, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')        
 
     if save:
         image_path = out_dir / "result.png"
