@@ -6,6 +6,7 @@ from scipy.spatial.distance import cdist
 
 from functools import partial
 from multiprocessing import Pool, cpu_count
+import multiprocessing as mp
 
 def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     """Process a chunk of points in parallel"""
@@ -22,6 +23,8 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
 
 def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0, rotate_z=0.0, tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
+    # ctx = mp.get_context('spawn')
+
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
     mesh.triangulate(inplace=True)
@@ -89,6 +92,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rot
         ))
     
     # Parallel execution
+    # with ctx.Pool(n_workers) as pool:
     with Pool(n_workers) as pool:
         results = pool.starmap(process_chunk, args)
     
@@ -170,23 +174,24 @@ def find_accessible_surface(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0
     return mesh, centers
 
 if __name__ == "__main__":
-    # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
-    path = "/home/none/Projects/light/objects/obt_LG.obj"
-    radius = 50000  
+    pass
+    # # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
+    # path = "/home/none/Projects/light/objects/obt_LG.obj"
+    # radius = 50000  
     
-    # result, centers = find_accessible_surface(path, sphere_radius=radius, render=True)
-    result, centers = find_accessible_surface_parallel(path, sphere_radius=radius, render=True)
+    # # result, centers = find_accessible_surface(path, sphere_radius=radius, render=True)
+    # result, centers = find_accessible_surface_parallel(path, sphere_radius=radius, render=True)
     
-    # Extract accessible fragment
-    accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
+    # # Extract accessible fragment
+    # accessible_indices = np.where( result['accessible'] > 0.5)[0]
+    # accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
+    # accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
     
-    # Visualization
-    p = pv.Plotter()
-    p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
-    p.show() 
+    # # Visualization
+    # p = pv.Plotter()
+    # p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
+    # p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
+    # p.show() 
     
-    # Save result
-    accessible_mesh.save("images/accessible_fragment.obj")    
+    # # Save result
+    # accessible_mesh.save("images/accessible_fragment.obj")    
