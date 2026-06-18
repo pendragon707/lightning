@@ -13,8 +13,7 @@ import queue
 import pyvista as pv
 import numpy as np
 
-# from src import find_accessible_surface, load_step, get_accessible_mesh
-from src import find_accessible_surface_parallel, load_step, get_accessible_mesh
+from src import find_accessible_surface, find_accessible_surface_parallel, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
 
 class WorkerThread(threading.Thread):
@@ -50,12 +49,22 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Используется радиус сферы: {self.params['radius']}")
         
         # Calculate mask
-        # result, centers = find_accessible_surface(
-        result, centers = find_accessible_surface_parallel(
-            self.params['obj'], 
-            sphere_radius=self.params['radius'],
-            rotate=self.params['rotate']
-        )
+        if self.params['paral']:
+            print("paral")
+            self.progress_callback(f"paral")
+            result, centers = find_accessible_surface_parallel(
+                self.params['obj'], 
+                sphere_radius=self.params['radius'],
+                rotate=self.params['rotate']
+            )
+        else:
+            print("not paral")
+            self.progress_callback(f"not paral")
+            result, centers = find_accessible_surface(
+                self.params['obj'], 
+                sphere_radius=self.params['radius'],
+                rotate=self.params['rotate']
+            )
 
         accessible_mesh = get_accessible_mesh(result)
         
@@ -171,9 +180,9 @@ class MainWindow:
         self.mode_notebook.add(self.plots_tab, text="Построение графиков")
         
         # Initialize variables
-        self.mask_obj_path = tk.StringVar(value="objects/obt_LG.obj")
+        self.mask_obj_path = tk.StringVar(value="objects/new_freecad.obj")
         self.mask_stp_path = tk.StringVar(value="objects/obt_LG.stp")
-        self.radius_input = tk.StringVar(value="50000")
+        self.radius_input = tk.StringVar(value="5000")
         self.mask_outdir = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d-%H-%M"))
         
         self.plots_obj_path = tk.StringVar(value="objects/base.obj")
@@ -273,6 +282,11 @@ class MainWindow:
         #                                 variable=self.draw_var)
         # draw_checkbox.pack(anchor=tk.W, pady=5)
         
+        self.paral_var = tk.BooleanVar(value=True)
+        paral_checkbox = ttk.Checkbutton(scrollable_frame, text="Включить параллельность",
+                                         variable=self.paral_var)
+        paral_checkbox.pack(anchor=tk.W, pady=5)
+
         self.plots_var = tk.BooleanVar(value=True)
         plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
                                          variable=self.plots_var)
@@ -395,6 +409,7 @@ class MainWindow:
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
+                'paral': self.paral_var.get(),
                 'plots': self.plots_var.get(),
                 'rotate': self.rotate_var.get(),
                 'outdir': self.mask_outdir.get()
@@ -428,6 +443,7 @@ class MainWindow:
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
+                'paral': self.paral_var.get(),
                 'plots': self.plots_var.get(),
                 'rotate': self.rotate_var.get(),
                 'outdir': self.mask_outdir.get()

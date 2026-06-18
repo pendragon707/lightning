@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QPixmap, QFont
 
-from src import find_accessible_surface, load_step, get_accessible_mesh
+from src import find_accessible_surface, find_accessible_surface_parallel, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask
 
 class WorkerThread(QThread):
@@ -53,12 +53,20 @@ class WorkerThread(QThread):
         self.progress.emit(f"Используется радиус сферы: {self.params['radius']}")
         
         # Calculate mask
-        result, centers = find_accessible_surface(
-            self.params['obj'], 
-            sphere_radius=self.params['radius'], 
-            render=self.params['draw'], 
-            out_dir=out_path
-        )
+        if self.params['paral']:
+            result, centers = find_accessible_surface_parallel(
+                self.params['obj'], 
+                sphere_radius=self.params['radius'], 
+                render=self.params['draw'], 
+                out_dir=out_path
+            )            
+        else:
+            result, centers = find_accessible_surface(
+                self.params['obj'], 
+                sphere_radius=self.params['radius'], 
+                render=self.params['draw'], 
+                out_dir=out_path
+            )
                 
         accessible_mesh = get_accessible_mesh(result)
         
@@ -235,6 +243,9 @@ class MainWindow(QMainWindow):
         layout.addLayout(outdir_layout)
         
         # Options
+        self.paral_checkbox = QCheckBox("Включить параллельность")
+        layout.addWidget(self.paral_checkbox)
+
         self.draw_checkbox = QCheckBox("Отобразить сферу")
         layout.addWidget(self.draw_checkbox)
         
@@ -309,6 +320,7 @@ class MainWindow(QMainWindow):
                 'obj': self.mask_obj_path.text(),
                 'stp': self.mask_stp_path.text(),
                 'radius': float(self.radius_input.text()),
+                'paral': self.paral_checkbox.isChecked(),
                 'draw': self.draw_checkbox.isChecked(),
                 'plots': self.plots_checkbox.isChecked(),
                 'outdir': self.mask_outdir.text()
@@ -342,6 +354,7 @@ class MainWindow(QMainWindow):
                 'obj': self.mask_obj_path.text(),
                 'stp': self.mask_stp_path.text(),
                 'radius': float(self.radius_input.text()),
+                'paral': self.paral_checkbox.isChecked(),
                 'draw': self.draw_checkbox.isChecked(),
                 'plots': self.plots_checkbox.isChecked(),
                 'outdir': self.mask_outdir.text()

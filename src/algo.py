@@ -24,13 +24,18 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol
     """Parallel version using multiprocessing"""
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
+    mesh.triangulate(inplace=True)
 
+    if not mesh.is_manifold:
+        print("Mesh is not manifold - filling holes...")
+        mesh.fill_holes(10)  # Try to fill holes
+        mesh.clean(inplace=True)     
+    
     if rotate:
         mesh = mesh.rotate_y(90, inplace=False)
         mesh = mesh.rotate_x(270, inplace=False)
-
-    # mesh.compute_normals(cell_normals=False, point_normals=True, inplace=True)
-    mesh = mesh.compute_normals(cell_normals=False, point_normals=True)
+    
+    mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
     
     points = mesh.points
 
@@ -39,6 +44,25 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol
 
     normals = mesh['Normals']
     normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+
+    # ✅ Check for NaN/Inf in normals
+    if np.any(~np.isfinite(normals)):
+        print(f"Found {np.sum(~np.isfinite(normals))} invalid normals")
+        # Replace invalid normals with zeros
+        normals = np.where(np.isfinite(normals), normals, 0)
+        # Or drop invalid points entirely
+        valid_mask = np.all(np.isfinite(normals), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)
+    
+    # ✅ Check points as well
+    if np.any(~np.isfinite(points)):
+        print(f"Found invalid points")
+        valid_mask = np.all(np.isfinite(points), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)    
     
     # Build optimized KDTree
     tree = cKDTree(points, balanced_tree=True, compact_nodes=True)
@@ -74,7 +98,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol
     
     return mesh, centers
 
-def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3):
+def find_accessible_surface(mesh_path, sphere_radius, rotate=False, tol=1e-3, n_workers=None):
     """
     Finds surface fragments where a sphere of fixed radius can touch 
     without intersecting or penetrating the mesh elsewhere.
@@ -90,13 +114,44 @@ def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3):
     # 1. Load & clean mesh
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)  # Remove duplicate vertices
+    mesh.triangulate(inplace=True)
     
+    if not mesh.is_manifold:
+        print("Mesh is not manifold - filling holes...")
+        mesh.fill_holes(10)  # Try to fill holes
+        mesh.clean(inplace=True) 
+
+    if rotate:
+        mesh = mesh.rotate_y(90, inplace=False)
+        mesh = mesh.rotate_x(270, inplace=False)
+
     # 2. Compute point normals (assumes outward orientation for closed meshes)
-    mesh.compute_normals(cell_normals=False, point_normals=True, inplace=True)
+    mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
     
     points = mesh.points
     normals = mesh['Normals']
+
+    normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+
+    # ✅ Check for NaN/Inf in normals
+    if np.any(~np.isfinite(normals)):
+        print(f"Found {np.sum(~np.isfinite(normals))} invalid normals")
+        # Replace invalid normals with zeros
+        normals = np.where(np.isfinite(normals), normals, 0)
+        # Or drop invalid points entirely
+        valid_mask = np.all(np.isfinite(normals), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)
     
+    # ✅ Check points as well
+    if np.any(~np.isfinite(points)):
+        print(f"Found invalid points")
+        valid_mask = np.all(np.isfinite(points), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)  
+
     # 3. Build spatial index for fast distance queries
     tree = cKDTree(points)
     
