@@ -20,7 +20,7 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
     return accessible_chunk
 
-def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol=1e-3, n_workers=None):
+def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0, rotate_z=0.0, tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
@@ -31,9 +31,9 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol
         mesh.fill_holes(10)  # Try to fill holes
         mesh.clean(inplace=True)     
     
-    if rotate:
-        mesh = mesh.rotate_y(90, inplace=False)
-        mesh = mesh.rotate_x(270, inplace=False)
+    mesh = mesh.rotate_y(rotate_y, inplace=False)
+    mesh = mesh.rotate_x(rotate_x, inplace=False)    
+    mesh = mesh.rotate_z(rotate_z, inplace=False)
     
     mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
     
@@ -98,7 +98,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol
     
     return mesh, centers
 
-def find_accessible_surface(mesh_path, sphere_radius, rotate=False, tol=1e-3, n_workers=None):
+def find_accessible_surface(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0, rotate_z=0.0, tol=1e-3, n_workers=None):
     """
     Finds surface fragments where a sphere of fixed radius can touch 
     without intersecting or penetrating the mesh elsewhere.
@@ -121,9 +121,9 @@ def find_accessible_surface(mesh_path, sphere_radius, rotate=False, tol=1e-3, n_
         mesh.fill_holes(10)  # Try to fill holes
         mesh.clean(inplace=True) 
 
-    if rotate:
-        mesh = mesh.rotate_y(90, inplace=False)
-        mesh = mesh.rotate_x(270, inplace=False)
+    mesh = mesh.rotate_y(rotate_y, inplace=False)
+    mesh = mesh.rotate_x(rotate_x, inplace=False)    
+    mesh = mesh.rotate_z(rotate_z, inplace=False)
 
     # 2. Compute point normals (assumes outward orientation for closed meshes)
     mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  

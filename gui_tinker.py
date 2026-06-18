@@ -50,20 +50,20 @@ class WorkerThread(threading.Thread):
         
         # Calculate mask
         if self.params['paral']:
-            print("paral")
-            self.progress_callback(f"paral")
             result, centers = find_accessible_surface_parallel(
                 self.params['obj'], 
                 sphere_radius=self.params['radius'],
-                rotate=self.params['rotate']
+                rotate_x=self.params['rotate_x'],
+                rotate_y=self.params['rotate_y'],
+                rotate_z=self.params['rotate_z']
             )
         else:
-            print("not paral")
-            self.progress_callback(f"not paral")
             result, centers = find_accessible_surface(
                 self.params['obj'], 
                 sphere_radius=self.params['radius'],
-                rotate=self.params['rotate']
+                rotate_x=self.params['rotate_x'],
+                rotate_y=self.params['rotate_y'],
+                rotate_z=self.params['rotate_z']
             )
 
         accessible_mesh = get_accessible_mesh(result)
@@ -108,12 +108,20 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Загружается маска: {self.params['mask']}")
         mesh_mask = pv.read(self.params['mask'])
 
-        if self.params['rotate']:
-            mesh = mesh.rotate_y(90, inplace=False)
-            mesh = mesh.rotate_x(270, inplace=False)
+        mesh = mesh.rotate_x(self.params['rotate_x'], inplace=False)
+        mesh = mesh.rotate_y(self.params['rotate_y'], inplace=False)
+        mesh = mesh.rotate_z(self.params['rotate_z'], inplace=False)
 
-            mesh_mask = mesh_mask.rotate_y(90, inplace=False)
-            mesh_mask = mesh_mask.rotate_x(270, inplace=False)
+        mesh_mask = mesh_mask.rotate_x(self.params['rotate_x'], inplace=False)
+        mesh_mask = mesh_mask.rotate_y(self.params['rotate_y'], inplace=False)
+        mesh_mask = mesh_mask.rotate_z(self.params['rotate_z'], inplace=False)
+
+        # if self.params['rotate']:
+        #     mesh = mesh.rotate_y(90, inplace=False)
+        #     mesh = mesh.rotate_x(270, inplace=False)
+
+        #     mesh_mask = mesh_mask.rotate_y(90, inplace=False)
+        #     mesh_mask = mesh_mask.rotate_x(270, inplace=False)
         
         self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
         shape = load_step(self.params['stp'])
@@ -133,17 +141,26 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
         mesh = pv.read(self.params['obj'])
 
-        if self.params['rotate']:
-            mesh = mesh.rotate_y(90, inplace=False)
-            mesh = mesh.rotate_x(270, inplace=False)        
+        # if self.params['rotate']:
+        #     mesh = mesh.rotate_y(90, inplace=False)
+        #     mesh = mesh.rotate_x(270, inplace=False)       
+        mesh = mesh.rotate_x(self.params['rotate_x'], inplace=False)
+        mesh = mesh.rotate_y(self.params['rotate_y'], inplace=False)
+        mesh = mesh.rotate_z(self.params['rotate_z'], inplace=False)
+
+          
             
         if 'mask' in self.params:
             self.progress_callback(f"Загружена маска из: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
 
-            if self.params['rotate']:
-                mesh_mask = mesh_mask.rotate_y(90, inplace=False)
-                mesh_mask = mesh_mask.rotate_x(270, inplace=False)
+            # if self.params['rotate']:
+            #     mesh_mask = mesh_mask.rotate_y(90, inplace=False)
+            #     mesh_mask = mesh_mask.rotate_x(270, inplace=False)
+            
+            mesh_mask = mesh_mask.rotate_x(self.params['rotate_x'], inplace=False)
+            mesh_mask = mesh_mask.rotate_y(self.params['rotate_y'], inplace=False)
+            mesh_mask = mesh_mask.rotate_z(self.params['rotate_z'], inplace=False)                   
 
             self.progress_callback("Генерация графиков...")        
             plot_mesh_mask(mesh, mesh_mask, save=False)
@@ -292,10 +309,43 @@ class MainWindow:
                                          variable=self.plots_var)
         plots_checkbox.pack(anchor=tk.W, pady=5)
 
-        self.rotate_var = tk.BooleanVar(value=False)
-        rotate_checkbox = ttk.Checkbutton(scrollable_frame, text="Повернуть модель на Y=90,X=270",
-                                         variable=self.rotate_var)
-        rotate_checkbox.pack(anchor=tk.W, pady=5)        
+        # self.rotate_var = tk.BooleanVar(value=False)
+        # rotate_checkbox = ttk.Checkbutton(scrollable_frame, text="Повернуть модель на Y=90,X=270",
+        #                                     variable=self.rotate_var)
+        # rotate_checkbox.pack(anchor=tk.W, pady=5)        
+
+        # Создаем переменные для углов поворота (по умолчанию 0)
+        self.rotate_x = tk.DoubleVar(value=0.0)
+        self.rotate_y = tk.DoubleVar(value=0.0)
+        self.rotate_z = tk.DoubleVar(value=0.0)
+
+        # Создаем фрейм для углов поворота
+        rotation_frame = ttk.LabelFrame(scrollable_frame, text="Поворот модели", padding=5)
+        rotation_frame.pack(anchor=tk.W, pady=5, fill=tk.X)
+
+        # Строка для оси X
+        x_frame = ttk.Frame(rotation_frame)
+        x_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(x_frame, text="X:").pack(side=tk.LEFT, padx=(0, 5))
+        x_entry = ttk.Entry(x_frame, textvariable=self.rotate_x, width=10)
+        x_entry.pack(side=tk.LEFT)
+        ttk.Label(x_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))
+
+        # Строка для оси Y
+        y_frame = ttk.Frame(rotation_frame)
+        y_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(y_frame, text="Y:").pack(side=tk.LEFT, padx=(0, 5))
+        y_entry = ttk.Entry(y_frame, textvariable=self.rotate_y, width=10)
+        y_entry.pack(side=tk.LEFT)
+        ttk.Label(y_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))
+
+        # Строка для оси Z
+        z_frame = ttk.Frame(rotation_frame)
+        z_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(z_frame, text="Z:").pack(side=tk.LEFT, padx=(0, 5))
+        z_entry = ttk.Entry(z_frame, textvariable=self.rotate_z, width=10)
+        z_entry.pack(side=tk.LEFT)
+        ttk.Label(z_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))       
     
     def setup_plots_tab(self):
         # Create scrollable frame
@@ -411,7 +461,10 @@ class MainWindow:
                 'radius': float(self.radius_input.get()),
                 'paral': self.paral_var.get(),
                 'plots': self.plots_var.get(),
-                'rotate': self.rotate_var.get(),
+                # 'rotate': self.rotate_var.get(),
+                'rotate_x': self.rotate_x.get(),
+                'rotate_y': self.rotate_y.get(),
+                'rotate_z': self.rotate_z.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "show"
@@ -420,7 +473,10 @@ class MainWindow:
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
                 'mask': self.mask_path.get(),
-                'rotate': self.rotate_var.get(),
+                # 'rotate': self.rotate_var.get(),
+                'rotate_x': self.rotate_x.get(),
+                'rotate_y': self.rotate_y.get(),
+                'rotate_z': self.rotate_z.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "show"
@@ -445,7 +501,10 @@ class MainWindow:
                 'radius': float(self.radius_input.get()),
                 'paral': self.paral_var.get(),
                 'plots': self.plots_var.get(),
-                'rotate': self.rotate_var.get(),
+                # 'rotate': self.rotate_var.get(),
+                'rotate_x': self.rotate_x.get(),
+                'rotate_y': self.rotate_y.get(),
+                'rotate_z': self.rotate_z.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "mask"
@@ -454,7 +513,10 @@ class MainWindow:
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
                 'mask': self.mask_path.get(),
-                'rotate': self.rotate_var.get(),
+                # 'rotate': self.rotate_var.get(),
+                'rotate_x': self.rotate_x.get(),
+                'rotate_y': self.rotate_y.get(),
+                'rotate_z': self.rotate_z.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "plots"
