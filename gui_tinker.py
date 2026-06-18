@@ -398,6 +398,39 @@ class MainWindow:
         outdir_entry = ttk.Entry(outdir_frame, textvariable=self.plots_outdir)
         outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
     
+        # Создаем переменные для углов поворота (по умолчанию 0)
+        self.rotate_x = tk.DoubleVar(value=0.0)
+        self.rotate_y = tk.DoubleVar(value=0.0)
+        self.rotate_z = tk.DoubleVar(value=0.0)
+
+        # Создаем фрейм для углов поворота
+        rotation_frame = ttk.LabelFrame(scrollable_frame, text="Поворот модели", padding=5)
+        rotation_frame.pack(anchor=tk.W, pady=5, fill=tk.X)
+
+        # Строка для оси X
+        x_frame = ttk.Frame(rotation_frame)
+        x_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(x_frame, text="X:").pack(side=tk.LEFT, padx=(0, 5))
+        x_entry = ttk.Entry(x_frame, textvariable=self.rotate_x, width=10)
+        x_entry.pack(side=tk.LEFT)
+        ttk.Label(x_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))
+
+        # Строка для оси Y
+        y_frame = ttk.Frame(rotation_frame)
+        y_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(y_frame, text="Y:").pack(side=tk.LEFT, padx=(0, 5))
+        y_entry = ttk.Entry(y_frame, textvariable=self.rotate_y, width=10)
+        y_entry.pack(side=tk.LEFT)
+        ttk.Label(y_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))
+
+        # Строка для оси Z
+        z_frame = ttk.Frame(rotation_frame)
+        z_frame.pack(anchor=tk.W, pady=2)
+        ttk.Label(z_frame, text="Z:").pack(side=tk.LEFT, padx=(0, 5))
+        z_entry = ttk.Entry(z_frame, textvariable=self.rotate_z, width=10)
+        z_entry.pack(side=tk.LEFT)
+        ttk.Label(z_frame, text="°").pack(side=tk.LEFT, padx=(0, 10))    
+
     def update_mask_path(self, *args):
         self.plots_outdir.set(str(Path(self.mask_path.get()).parent))
     
