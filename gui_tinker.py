@@ -53,7 +53,8 @@ class WorkerThread(threading.Thread):
         # result, centers = find_accessible_surface(
         result, centers = find_accessible_surface_parallel(
             self.params['obj'], 
-            sphere_radius=self.params['radius']
+            sphere_radius=self.params['radius'],
+            rotate=self.params['rotate']
         )
 
         accessible_mesh = get_accessible_mesh(result)
@@ -93,10 +94,17 @@ class WorkerThread(threading.Thread):
         out_path.mkdir(parents=True, exist_ok=True)
         
         self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
-        mesh = pv.read(self.params['obj'])
-        
+        mesh = pv.read(self.params['obj'])     
+
         self.progress_callback(f"Загружается маска: {self.params['mask']}")
         mesh_mask = pv.read(self.params['mask'])
+
+        if self.params['rotate']:
+            mesh = mesh.rotate_y(90, inplace=False)
+            mesh = mesh.rotate_x(270, inplace=False)
+
+            mesh_mask = mesh_mask.rotate_y(90, inplace=False)
+            mesh_mask = mesh_mask.rotate_x(270, inplace=False)
         
         self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
         shape = load_step(self.params['stp'])
@@ -115,10 +123,18 @@ class WorkerThread(threading.Thread):
 
         self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
         mesh = pv.read(self.params['obj'])
-        
+
+        if self.params['rotate']:
+            mesh = mesh.rotate_y(90, inplace=False)
+            mesh = mesh.rotate_x(270, inplace=False)        
+            
         if 'mask' in self.params:
             self.progress_callback(f"Загружена маска из: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
+
+            if self.params['rotate']:
+                mesh_mask = mesh_mask.rotate_y(90, inplace=False)
+                mesh_mask = mesh_mask.rotate_x(270, inplace=False)
 
             self.progress_callback("Генерация графиков...")        
             plot_mesh_mask(mesh, mesh_mask, save=False)
@@ -261,6 +277,11 @@ class MainWindow:
         plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
                                          variable=self.plots_var)
         plots_checkbox.pack(anchor=tk.W, pady=5)
+
+        self.rotate_var = tk.BooleanVar(value=False)
+        rotate_checkbox = ttk.Checkbutton(scrollable_frame, text="Повернуть модель на Y=90,X=270",
+                                         variable=self.rotate_var)
+        rotate_checkbox.pack(anchor=tk.W, pady=5)        
     
     def setup_plots_tab(self):
         # Create scrollable frame
@@ -375,6 +396,7 @@ class MainWindow:
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
                 'plots': self.plots_var.get(),
+                'rotate': self.rotate_var.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "show"
@@ -383,6 +405,7 @@ class MainWindow:
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
                 'mask': self.mask_path.get(),
+                'rotate': self.rotate_var.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "show"
@@ -406,6 +429,7 @@ class MainWindow:
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
                 'plots': self.plots_var.get(),
+                'rotate': self.rotate_var.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "mask"
@@ -414,6 +438,7 @@ class MainWindow:
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
                 'mask': self.mask_path.get(),
+                'rotate': self.rotate_var.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "plots"

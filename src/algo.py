@@ -20,10 +20,15 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
     return accessible_chunk
 
-def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_workers=None):
+def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate=False, tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
+
+    if rotate:
+        mesh = mesh.rotate_y(90, inplace=False)
+        mesh = mesh.rotate_x(270, inplace=False)
+
     # mesh.compute_normals(cell_normals=False, point_normals=True, inplace=True)
     mesh = mesh.compute_normals(cell_normals=False, point_normals=True)
     
@@ -33,6 +38,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, tol=1e-3, n_worke
         raise KeyError("Normals not found. Make sure compute_normals() was called successfully.")
 
     normals = mesh['Normals']
+    normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
     
     # Build optimized KDTree
     tree = cKDTree(points, balanced_tree=True, compact_nodes=True)
