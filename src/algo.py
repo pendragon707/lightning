@@ -31,13 +31,32 @@ def find_accessible_surface(mesh_path, sphere_radius, tol=1e-3, render = False, 
         mesh.clean(inplace=True)     
     
     # 2. Compute point normals (assumes outward orientation for closed meshes)                
-    mesh.compute_normals(cell_normals=False, point_normals=True, auto_orient_normals=True, inplace=True)  
+    mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
     
     points = mesh.points
-    # normals = mesh['Normals']
-    normals = mesh.point_data['Normals']
+    normals = mesh['Normals']
+    # normals = mesh.point_data['Normals']
     
     normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+
+    # ✅ Check for NaN/Inf in normals
+    if np.any(~np.isfinite(normals)):
+        print(f"Found {np.sum(~np.isfinite(normals))} invalid normals")
+        # Replace invalid normals with zeros
+        normals = np.where(np.isfinite(normals), normals, 0)
+        # Or drop invalid points entirely
+        valid_mask = np.all(np.isfinite(normals), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)
+    
+    # ✅ Check points as well
+    if np.any(~np.isfinite(points)):
+        print(f"Found invalid points")
+        valid_mask = np.all(np.isfinite(points), axis=1)
+        points = points[valid_mask]
+        normals = normals[valid_mask]
+        mesh = mesh.extract_points(valid_mask)
 
     # 3. Build spatial index for fast distance queries
     tree = cKDTree(points)

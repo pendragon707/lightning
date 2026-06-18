@@ -166,9 +166,9 @@ class MainWindow(QMainWindow):
         self.mask_path = QLineEdit("out/base/accessible_fragment.obj")
         self.plots_outdir = QLineEdit( str(Path(self.mask_path.text()).parent) )
 
-        self.mask_obj_path = QLineEdit("objects/obt_LG.obj")
+        self.mask_obj_path = QLineEdit("objects/new.obj")
         self.mask_stp_path = QLineEdit("objects/obt_LG.stp")
-        self.radius_input = QLineEdit("50000")
+        self.radius_input = QLineEdit("5000")
         self.mask_outdir = QLineEdit(datetime.now().strftime("%Y-%m-%d-%H-%M"))
         
         # Setup mask tab
@@ -242,9 +242,11 @@ class MainWindow(QMainWindow):
         
         # Options
         self.draw_checkbox = QCheckBox("Отобразить сферу")
+        self.draw_checkbox.setChecked(True)
         layout.addWidget(self.draw_checkbox)
 
         self.normals_checkbox = QCheckBox("Отобразить нормали")
+        self.normals_checkbox.setChecked(True)
         layout.addWidget(self.normals_checkbox)        
         
         self.plots_checkbox = QCheckBox("Построение графиков")
