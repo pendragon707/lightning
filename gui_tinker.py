@@ -270,6 +270,10 @@ class MainWindow:
         ttk.Button(obj_frame, text="Найти", 
                   command=lambda: self.browse_file(self.mask_obj_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
         
+        # Warning label for OBJ
+        self.obj_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.obj_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
         # STP file
         stp_frame = ttk.Frame(scrollable_frame)
         stp_frame.pack(fill=tk.X, pady=5)
@@ -279,6 +283,15 @@ class MainWindow:
         ttk.Button(stp_frame, text="Найти",
                   command=lambda: self.browse_file(self.mask_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
         
+        # Warning label for STP
+        self.stp_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
+        #  Validate initial files
+        self.validate_file_exists(self.mask_obj_path, self.obj_warning, "OBJ file")
+        self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+        self.setup_file_validation()
+
         # Radius
         radius_frame = ttk.Frame(scrollable_frame)
         radius_frame.pack(fill=tk.X, pady=5)
@@ -294,11 +307,6 @@ class MainWindow:
         outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         # Options
-        # self.draw_var = tk.BooleanVar(value=False)
-        # draw_checkbox = ttk.Checkbutton(scrollable_frame, text="Отобразить сферу", 
-        #                                 variable=self.draw_var)
-        # draw_checkbox.pack(anchor=tk.W, pady=5)
-        
         self.paral_var = tk.BooleanVar(value=True)
         paral_checkbox = ttk.Checkbutton(scrollable_frame, text="Включить параллельность",
                                          variable=self.paral_var)
@@ -438,7 +446,25 @@ class MainWindow:
         file_path = filedialog.askopenfilename(title="Выбрать файл", filetypes=[(file_filter, "*.*")])
         if file_path:
             string_var.set(file_path)
+
+        #  Validate initial files
+        self.validate_file_exists(self.mask_obj_path, self.obj_warning, "OBJ file")
+        self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")            
     
+    def setup_file_validation(self):
+        """Set up trace to validate files when paths are edited"""
+        # Trace both OBJ and STP paths
+        self.mask_obj_path.trace('w', self.on_obj_path_changed)
+        self.mask_stp_path.trace('w', self.on_stp_path_changed)
+
+    def on_obj_path_changed(self, *args):
+        """Called when OBJ path is edited"""
+        self.validate_file_exists(self.mask_obj_path, self.obj_warning, "OBJ file")
+
+    def on_stp_path_changed(self, *args):
+        """Called when STP path is edited"""
+        self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+
     def update_progress(self, message):
         self.message_queue.put(("progress", message))
     
@@ -557,7 +583,21 @@ class MainWindow:
         # Start worker thread
         self.worker = WorkerThread(task_type, params, self.update_progress, self.task_finished)
         self.worker.start()
-    
+
+    def validate_file_exists(self, path_var, warning_label, file_type="file"):
+        """Check if file exists and update warning label accordingly""" 
+        file_path = path_var.get()
+        if not file_path:
+            warning_label.config(text=f"⚠️ {file_type} path is empty!", foreground="red")
+            return False
+        elif not Path(file_path).exists():
+            warning_label.config(text=f"⚠️ {file_type} not found!", foreground="red")
+            return False
+        else:
+            # Hide the label when file exists
+            warning_label.config(text="")
+            return True
+
     def run(self):
         self.root.mainloop()
 
