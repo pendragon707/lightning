@@ -275,14 +275,14 @@ class MainWindow:
         self.obj_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
 
         # STP file
-        stp_frame = ttk.Frame(scrollable_frame)
-        stp_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(stp_frame, text="Модель (*.stp):").pack(side=tk.LEFT)
-        stp_entry = ttk.Entry(stp_frame, textvariable=self.mask_stp_path)
+        self.stp_frame = ttk.Frame(scrollable_frame)
+        # self.stp_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(self.stp_frame, text="Модель (*.stp):").pack(side=tk.LEFT)
+        stp_entry = ttk.Entry(self.stp_frame, textvariable=self.plots_stp_path)
         stp_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        ttk.Button(stp_frame, text="Найти",
-                  command=lambda: self.browse_file(self.mask_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
-        
+        ttk.Button(self.stp_frame, text="Найти",
+                  command=lambda: self.browse_file(self.plots_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
+
         # Warning label for STP
         self.stp_warning = ttk.Label(scrollable_frame, text="", foreground="red")
         self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
@@ -293,10 +293,10 @@ class MainWindow:
         self.setup_file_validation()
 
         # Radius
-        radius_frame = ttk.Frame(scrollable_frame)
-        radius_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(radius_frame, text="Радиус сферы:").pack(side=tk.LEFT)
-        radius_entry = ttk.Entry(radius_frame, textvariable=self.radius_input)
+        self.radius_frame = ttk.Frame(scrollable_frame)
+        self.radius_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(self.radius_frame, text="Радиус сферы:").pack(side=tk.LEFT)
+        radius_entry = ttk.Entry(self.radius_frame, textvariable=self.radius_input)
         radius_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         # Output directory
@@ -314,8 +314,17 @@ class MainWindow:
 
         self.plots_var = tk.BooleanVar(value=True)
         plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
-                                         variable=self.plots_var)
+                                         variable=self.plots_var,
+                                         command=self.toggle_stp_frame)
         plots_checkbox.pack(anchor=tk.W, pady=5)
+
+        if self.plots_var.get():            
+            self.stp_frame.pack(fill=tk.X, pady=5, before=self.radius_frame)
+            self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
+            self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+            self.setup_file_validation()
+
 
         # self.rotate_var = tk.BooleanVar(value=False)
         # rotate_checkbox = ttk.Checkbutton(scrollable_frame, text="Повернуть модель на Y=90,X=270",
@@ -381,6 +390,10 @@ class MainWindow:
         ttk.Button(obj_frame, text="Найти",
                   command=lambda: self.browse_file(self.plots_obj_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
         
+        # Warning label for OBJ
+        self.obj_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.obj_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
         # STP file
         stp_frame = ttk.Frame(scrollable_frame)
         stp_frame.pack(fill=tk.X, pady=5)
@@ -389,14 +402,23 @@ class MainWindow:
         stp_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(stp_frame, text="Найти",
                   command=lambda: self.browse_file(self.plots_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
-        
+
+        # Warning label for STP
+        self.stp_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
+        #  Validate initial files
+        self.validate_file_exists(self.mask_obj_path, self.obj_warning, "OBJ file")
+        self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+        self.setup_file_validation()
+
         # Mask file
-        mask_frame = ttk.Frame(scrollable_frame)
-        mask_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(mask_frame, text="Маска молниеопасных зон:").pack(side=tk.LEFT)
-        mask_entry = ttk.Entry(mask_frame, textvariable=self.mask_path)
+        self.mask_frame = ttk.Frame(scrollable_frame)
+        self.mask_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(self.mask_frame, text="Маска молниеопасных зон:").pack(side=tk.LEFT)
+        mask_entry = ttk.Entry(self.mask_frame, textvariable=self.mask_path)
         mask_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        ttk.Button(mask_frame, text="Найти",
+        ttk.Button(self.mask_frame, text="Найти",
                   command=lambda: self.browse_file(self.mask_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
         
         # Output directory
@@ -464,6 +486,17 @@ class MainWindow:
     def on_stp_path_changed(self, *args):
         """Called when STP path is edited"""
         self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+
+    def toggle_stp_frame(self):
+        """Show or hide STP frame based on plots_var"""
+        if self.plots_var.get():
+            # Show STP frame            
+            self.stp_frame.pack(fill=tk.X, pady=5, before=self.radius_frame)
+            self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20, before=self.radius_frame)
+        else:
+            # Hide STP frame
+            self.stp_frame.pack_forget()
+            self.stp_warning.pack_forget()
 
     def update_progress(self, message):
         self.message_queue.put(("progress", message))
