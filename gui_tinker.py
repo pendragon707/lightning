@@ -26,7 +26,7 @@ class WorkerThread(threading.Thread):
         self.progress_callback = progress_callback
         self.finished_callback = finished_callback
         self.daemon = True
-        
+
     def run(self):
         try:
             if self.task_type == "mask":
@@ -55,7 +55,8 @@ class WorkerThread(threading.Thread):
                 sphere_radius=self.params['radius'],
                 rotate_x=self.params['rotate_x'],
                 rotate_y=self.params['rotate_y'],
-                rotate_z=self.params['rotate_z']
+                rotate_z=self.params['rotate_z'],
+                progress_callback=self.progress_callback
             )
         else:
             result, centers = find_accessible_surface(
@@ -131,6 +132,7 @@ class WorkerThread(threading.Thread):
         plot_mesh_mask(mesh, mesh_mask, out_dir=out_path)
         get_2d_mask(mesh_mask, out_dir=out_path)
         
+        self.progress_callback("complete", 100, "Графики построены")
         self.progress_callback(f"Графики сохранены в: {out_path}")
         print(type(out_path))
         self.finished_callback(True, str(out_path))  
@@ -147,9 +149,7 @@ class WorkerThread(threading.Thread):
         mesh = mesh.rotate_x(self.params['rotate_x'], inplace=False)
         mesh = mesh.rotate_y(self.params['rotate_y'], inplace=False)
         mesh = mesh.rotate_z(self.params['rotate_z'], inplace=False)
-
-          
-            
+           
         if 'mask' in self.params:
             self.progress_callback(f"Загружена маска из: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
@@ -167,8 +167,9 @@ class WorkerThread(threading.Thread):
         else:
             self.progress_callback("Генерация графиков...")        
             plot_mesh_mask(mesh, save=False)
+        
+        self.progress_callback("complete", 100, "Графики построены")
 
-        self.progress_callback(f"Графики построены")
         self.finished_callback(True, "")          
 
 
@@ -197,7 +198,7 @@ class MainWindow:
         self.mode_notebook.add(self.plots_tab, text="Построение графиков")
         
         # Initialize variables
-        self.mask_obj_path = tk.StringVar(value="objects/new_freecad.obj")
+        self.mask_obj_path = tk.StringVar(value="objects/obt_LG.obj")
         self.mask_stp_path = tk.StringVar(value="objects/obt_LG.stp")
         self.radius_input = tk.StringVar(value="5000")
         self.mask_outdir = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d-%H-%M"))
@@ -231,7 +232,8 @@ class MainWindow:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Progress bar
-        self.progress_bar = ttk.Progressbar(left_panel, mode='indeterminate')
+        # self.progress_bar = ttk.Progressbar(left_panel, mode='indeterminate')
+        self.progress_bar = ttk.Progressbar(left_panel, mode='determinate')
         self.progress_bar.pack(fill=tk.X, pady=(5, 0))
         
         # Worker thread
@@ -465,8 +467,26 @@ class MainWindow:
         """Called when STP path is edited"""
         self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
 
-    def update_progress(self, message):
-        self.message_queue.put(("progress", message))
+    # def update_progress(self, message):
+    #     self.message_queue.put(("progress", message))
+
+    def update_progress(self, msg_type, value=None, message=None):
+        """Update progress bar and text"""
+        if msg_type == "preprocess":
+            self.message_queue.put(("progress", f"Подготовка: {message}"))
+            if value is not None:
+                self.progress_bar['value'] = value
+        elif msg_type == "processing":
+            self.message_queue.put(("progress", f"Обработка: {message}"))
+            if value is not None:
+                self.progress_bar['value'] = value
+        elif msg_type == "complete":
+            self.message_queue.put(("progress", f"{message}"))
+            if value is not None:
+                self.progress_bar['value'] = value
+        else:
+            # Handle simple string messages for backward compatibility
+            self.message_queue.put(("progress", msg_type))
     
     def task_finished(self, success, result):
         self.message_queue.put(("finished", (success, result)))
@@ -480,6 +500,9 @@ class MainWindow:
                     self.progress_text.insert(tk.END, msg_data + "\n")
                     self.progress_text.see(tk.END)
                     self.root.update_idletasks()
+
+                    if isinstance(msg_data, (int, float)):
+                        self.progress_bar['value'] = msg_data                    
                 
                 elif msg_type == "finished":
                     success, result = msg_data
@@ -507,7 +530,10 @@ class MainWindow:
     def show_task(self):
         self.show_button.config(state=tk.DISABLED)
         self.run_button.config(state=tk.DISABLED)
+        
+        self.progress_bar['value'] = 0
         self.progress_bar.start()
+
         self.update_progress("Инициализация...")
         
         # Get parameters based on active tab
@@ -547,7 +573,10 @@ class MainWindow:
         # Disable buttons during execution
         self.run_button.config(state=tk.DISABLED)
         self.show_button.config(state=tk.DISABLED)
+
+        self.progress_bar['value'] = 0
         self.progress_bar.start()
+
         self.update_progress("Инициализация...")
         
         # Get parameters based on active tab
