@@ -28,3 +28,5 @@ conda create -n open3d_env python=3.12
 conda activate open3d_env
 conda install -c conda-forge open3d
 ```
+
+Модель нужно поверхнуть YXZ, Y=90, X=270

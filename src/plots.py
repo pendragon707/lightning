@@ -79,7 +79,7 @@ def plot_projections(shape, views=("front", "side", "top", "bottom")):
         
     return contours_2d
 
-def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bottom"), out_dir=None):
+def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bottom"), out_dir=None, contours=False):
     """
     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
     
@@ -99,10 +99,11 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bott
         ax = axes[view_map[view]]
         
         # 1. Plot shape contours
-        # contours_2d = project_to_2d(edges_3d, view)
-        # for x, y in contours_2d:
-        #     ax.plot(x, y, 'k-', linewidth=1.5, alpha=0.7, label='Shape Contour')
-        
+        if contours:
+            contours_2d = project_to_2d(edges_3d, view)
+            for x, y in contours_2d:
+                ax.plot(x, y, 'k-', linewidth=1.5, alpha=0.7, label='Shape Contour')
+            
         # 2. Convert and plot mesh
         mesh_x, mesh_y, x_label, y_label = convert_polydata_to_matplotlib(mesh, view)
         
@@ -119,47 +120,6 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bott
 
     plt.tight_layout()
     plt.show()
-
-# def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bottom"), out_dir=None):
-#     """
-#     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
-    
-#     Parameters:
-#     - mesh: pv.PolyData - your mesh
-#     - shape: your shape object (for edge points extraction)
-#     - views: tuple of views to plot
-#     """
-#     # Extract edge points from shape
-#     edges_3d = extract_edge_points(shape)
-    
-#     # Create subplots
-#     fig, axes = plt.subplots(1, 4, figsize=(18, 6))
-#     view_map = {"front": 0, "side": 1, "top": 2, "bottom": 3}
-    
-#     for view in views:
-#         ax = axes[view_map[view]]
-        
-#         # 1. Plot shape contours
-#         contours_2d = project_to_2d(edges_3d, view)
-#         for x, y in contours_2d:
-#             ax.plot(x, y, 'k-', linewidth=1.5, alpha=0.7, label='Shape Contour')
-        
-#         # 2. Convert and plot mesh
-#         mesh_x, mesh_y, x_label, y_label = convert_polydata_to_matplotlib(mesh, view)
-        
-#         # Plot mesh points as scatter
-#         ax.scatter(mesh_x, mesh_y, c='red', s=1, alpha=0.3, label='Mesh Points')
-        
-#         # Format plot
-#         ax.set_title(f"{view.capitalize()} View")
-#         ax.set_aspect('equal')
-#         ax.axis('off')
-
-#     image_path = out_dir / "projections.png"
-#     fig.savefig(image_path)
-
-#     plt.tight_layout()
-#     plt.show()
 
 ### ----------------------------------------------------------------------
 ### pyvista

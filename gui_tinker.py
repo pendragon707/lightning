@@ -47,23 +47,27 @@ class WorkerThread(threading.Thread):
         
         self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
         self.progress_callback(f"Используется радиус сферы: {self.params['radius']}")
+
+        rotation_angles = {
+            'X': self.params['rotate_x'],
+            'Y': self.params['rotate_y'],
+            'Z': self.params['rotate_z']
+        }
         
         # Calculate mask
         if self.params['paral']:
             result, centers = find_accessible_surface_parallel(
                 self.params['obj'], 
                 sphere_radius=self.params['radius'],
-                rotate_x=self.params['rotate_x'],
-                rotate_y=self.params['rotate_y'],
-                rotate_z=self.params['rotate_z']
+                rotation_angles=rotation_angles,
+                rotation_order=self.params['rotation_order']
             )
         else:
             result, centers = find_accessible_surface(
                 self.params['obj'], 
                 sphere_radius=self.params['radius'],
-                rotate_x=self.params['rotate_x'],
-                rotate_y=self.params['rotate_y'],
-                rotate_z=self.params['rotate_z']
+                rotation_angles=rotation_angles,
+                rotation_order=self.params['rotation_order']
             )
 
         accessible_mesh = get_accessible_mesh(result)
@@ -108,20 +112,23 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Загружается маска: {self.params['mask']}")
         mesh_mask = pv.read(self.params['mask'])
 
-        mesh = mesh.rotate_x(self.params['rotate_x'], inplace=False)
-        mesh = mesh.rotate_y(self.params['rotate_y'], inplace=False)
-        mesh = mesh.rotate_z(self.params['rotate_z'], inplace=False)
+        rotation_angles = {
+            'X': self.params['rotate_x'],
+            'Y': self.params['rotate_y'],
+            'Z': self.params['rotate_z']
+        }
 
-        mesh_mask = mesh_mask.rotate_x(self.params['rotate_x'], inplace=False)
-        mesh_mask = mesh_mask.rotate_y(self.params['rotate_y'], inplace=False)
-        mesh_mask = mesh_mask.rotate_z(self.params['rotate_z'], inplace=False)
-
-        # if self.params['rotate']:
-        #     mesh = mesh.rotate_y(90, inplace=False)
-        #     mesh = mesh.rotate_x(270, inplace=False)
-
-        #     mesh_mask = mesh_mask.rotate_y(90, inplace=False)
-        #     mesh_mask = mesh_mask.rotate_x(270, inplace=False)
+        # Apply rotations in selected order
+        for axis in self.params['rotation_order']:
+            if axis == 'X':
+                mesh = mesh.rotate_x(rotation_angles['X'], inplace=False)
+                mesh_mask = mesh_mask.rotate_x(rotation_angles['X'], inplace=False)
+            elif axis == 'Y':
+                mesh = mesh.rotate_y(rotation_angles['Y'], inplace=False)
+                mesh_mask = mesh_mask.rotate_y(rotation_angles['Y'], inplace=False)
+            elif axis == 'Z':
+                mesh = mesh.rotate_z(rotation_angles['Z'], inplace=False)
+                mesh_mask = mesh_mask.rotate_z(rotation_angles['Z'], inplace=False)
         
         self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
         shape = load_step(self.params['stp'])
@@ -141,26 +148,33 @@ class WorkerThread(threading.Thread):
         self.progress_callback(f"Загружается модель (*.obj): {self.params['obj']}")
         mesh = pv.read(self.params['obj'])
 
-        # if self.params['rotate']:
-        #     mesh = mesh.rotate_y(90, inplace=False)
-        #     mesh = mesh.rotate_x(270, inplace=False)       
-        mesh = mesh.rotate_x(self.params['rotate_x'], inplace=False)
-        mesh = mesh.rotate_y(self.params['rotate_y'], inplace=False)
-        mesh = mesh.rotate_z(self.params['rotate_z'], inplace=False)
+        rotation_angles = {
+            'X': self.params['rotate_x'],
+            'Y': self.params['rotate_y'],
+            'Z': self.params['rotate_z']
+        }
 
-          
-            
+        # Apply rotations in selected order
+        for axis in self.params['rotation_order']:
+            if axis == 'X':
+                mesh = mesh.rotate_x(rotation_angles['X'], inplace=False)                
+            elif axis == 'Y':
+                mesh = mesh.rotate_y(rotation_angles['Y'], inplace=False)                
+            elif axis == 'Z':
+                mesh = mesh.rotate_z(rotation_angles['Z'], inplace=False)                
+
         if 'mask' in self.params:
             self.progress_callback(f"Загружена маска из: {self.params['mask']}")
             mesh_mask = pv.read(self.params['mask'])
 
-            # if self.params['rotate']:
-            #     mesh_mask = mesh_mask.rotate_y(90, inplace=False)
-            #     mesh_mask = mesh_mask.rotate_x(270, inplace=False)
-            
-            mesh_mask = mesh_mask.rotate_x(self.params['rotate_x'], inplace=False)
-            mesh_mask = mesh_mask.rotate_y(self.params['rotate_y'], inplace=False)
-            mesh_mask = mesh_mask.rotate_z(self.params['rotate_z'], inplace=False)                   
+            # Apply rotations in selected order
+            for axis in self.params['rotation_order']:
+                if axis == 'X':                   
+                    mesh_mask = mesh_mask.rotate_x(rotation_angles['X'], inplace=False)
+                elif axis == 'Y':                    
+                    mesh_mask = mesh_mask.rotate_y(rotation_angles['Y'], inplace=False)
+                elif axis == 'Z':                    
+                    mesh_mask = mesh_mask.rotate_z(rotation_angles['Z'], inplace=False)                
 
             self.progress_callback("Генерация графиков...")        
             plot_mesh_mask(mesh, mesh_mask, save=False)
@@ -197,7 +211,7 @@ class MainWindow:
         self.mode_notebook.add(self.plots_tab, text="Построение графиков")
         
         # Initialize variables
-        self.mask_obj_path = tk.StringVar(value="objects/new_freecad.obj")
+        self.mask_obj_path = tk.StringVar(value="objects/obt_LG.obj")
         self.mask_stp_path = tk.StringVar(value="objects/obt_LG.stp")
         self.radius_input = tk.StringVar(value="5000")
         self.mask_outdir = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d-%H-%M"))
@@ -206,10 +220,15 @@ class MainWindow:
         self.plots_stp_path = tk.StringVar(value="objects/base.stp")
         self.mask_path = tk.StringVar(value="out/base/accessible_fragment.obj")
         self.plots_outdir = tk.StringVar(value=str(Path(self.mask_path.get()).parent))
-        
+
+        self.rotation_order = tk.StringVar(value="XYZ")  # Default order
+        self.rotate_x = tk.DoubleVar(value=0.0)
+        self.rotate_y = tk.DoubleVar(value=0.0)
+        self.rotate_z = tk.DoubleVar(value=0.0)
+
         # Setup tabs
         self.setup_mask_tab()
-        self.setup_plots_tab()
+        self.setup_plots_tab()      
         
         # Buttons
         button_frame = ttk.Frame(left_panel)
@@ -322,14 +341,20 @@ class MainWindow:
         #                                     variable=self.rotate_var)
         # rotate_checkbox.pack(anchor=tk.W, pady=5)        
 
-        # Создаем переменные для углов поворота (по умолчанию 0)
-        self.rotate_x = tk.DoubleVar(value=0.0)
-        self.rotate_y = tk.DoubleVar(value=0.0)
-        self.rotate_z = tk.DoubleVar(value=0.0)
 
         # Создаем фрейм для углов поворота
         rotation_frame = ttk.LabelFrame(scrollable_frame, text="Поворот модели", padding=5)
         rotation_frame.pack(anchor=tk.W, pady=5, fill=tk.X)
+
+        # Add order selection (from Option 1)
+        order_frame = ttk.Frame(rotation_frame)
+        order_frame.pack(anchor=tk.W, pady=5)
+        ttk.Label(order_frame, text="Rotation Order:").pack(side=tk.LEFT, padx=(0, 10))
+        orders = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
+        order_combo = ttk.Combobox(order_frame, textvariable=self.rotation_order, 
+                                   values=orders, state="readonly", width=8)
+        order_combo.pack(side=tk.LEFT)
+        # order_combo.bind('<<ComboboxSelected>>', lambda e: self.on_rotation_changed())
 
         # Строка для оси X
         x_frame = ttk.Frame(rotation_frame)
@@ -405,15 +430,19 @@ class MainWindow:
         ttk.Label(outdir_frame, text="Директория сохранения:").pack(side=tk.LEFT)
         outdir_entry = ttk.Entry(outdir_frame, textvariable=self.plots_outdir)
         outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-    
-        # Создаем переменные для углов поворота (по умолчанию 0)
-        self.rotate_x = tk.DoubleVar(value=0.0)
-        self.rotate_y = tk.DoubleVar(value=0.0)
-        self.rotate_z = tk.DoubleVar(value=0.0)
 
         # Создаем фрейм для углов поворота
         rotation_frame = ttk.LabelFrame(scrollable_frame, text="Поворот модели", padding=5)
         rotation_frame.pack(anchor=tk.W, pady=5, fill=tk.X)
+
+        # Add order selection (from Option 1)
+        order_frame = ttk.Frame(rotation_frame)
+        order_frame.pack(anchor=tk.W, pady=5)
+        ttk.Label(order_frame, text="Rotation Order:").pack(side=tk.LEFT, padx=(0, 10))
+        orders = ["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"]
+        order_combo = ttk.Combobox(order_frame, textvariable=self.rotation_order, 
+                                   values=orders, state="readonly", width=8)
+        order_combo.pack(side=tk.LEFT)
 
         # Строка для оси X
         x_frame = ttk.Frame(rotation_frame)
@@ -519,11 +548,11 @@ class MainWindow:
                 'stp': self.mask_stp_path.get(),
                 'radius': float(self.radius_input.get()),
                 'paral': self.paral_var.get(),
-                'plots': self.plots_var.get(),
-                # 'rotate': self.rotate_var.get(),
+                'plots': self.plots_var.get(),                
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
+                'rotation_order': self.rotation_order.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "show"
@@ -532,10 +561,10 @@ class MainWindow:
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
                 'mask': self.mask_path.get(),
-                # 'rotate': self.rotate_var.get(),
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
+                'rotation_order': self.rotation_order.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "show"
@@ -552,6 +581,10 @@ class MainWindow:
         
         # Get parameters based on active tab
         current_tab = self.mode_notebook.index(self.mode_notebook.select())
+
+        print(self.rotate_x.get())
+        print(self.rotate_y.get())
+        print(self.rotate_z.get())
         
         if current_tab == 0:  # Mask tab
             params = {
@@ -564,6 +597,7 @@ class MainWindow:
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
+                'rotation_order': self.rotation_order.get(),
                 'outdir': self.mask_outdir.get()
             }
             task_type = "mask"
@@ -576,6 +610,7 @@ class MainWindow:
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
+                'rotation_order': self.rotation_order.get(),
                 'outdir': self.plots_outdir.get()
             }
             task_type = "plots"

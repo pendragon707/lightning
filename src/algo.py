@@ -21,7 +21,7 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
     return accessible_chunk
 
-def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0, rotate_z=0.0, tol=1e-3, n_workers=None):
+def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, rotation_order="XYZ", tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
     # ctx = mp.get_context('spawn')
 
@@ -32,11 +32,15 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rot
     if not mesh.is_manifold:
         print("Mesh is not manifold - filling holes...")
         mesh.fill_holes(10)  # Try to fill holes
-        mesh.clean(inplace=True)     
-    
-    mesh = mesh.rotate_y(rotate_y, inplace=False)
-    mesh = mesh.rotate_x(rotate_x, inplace=False)    
-    mesh = mesh.rotate_z(rotate_z, inplace=False)
+        mesh.clean(inplace=True)   
+
+    for axis in rotation_order:
+        if axis == 'X':
+            mesh = mesh.rotate_x(rotation_angles['X'], inplace=False)                
+        elif axis == 'Y':
+            mesh = mesh.rotate_y(rotation_angles['Y'], inplace=False)                
+        elif axis == 'Z':
+            mesh = mesh.rotate_z(rotation_angles['Z'], inplace=False)       
     
     mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
     
@@ -102,7 +106,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotate_x=0.0, rot
     
     return mesh, centers
 
-def find_accessible_surface(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0, rotate_z=0.0, tol=1e-3, n_workers=None):
+def find_accessible_surface(mesh_path, sphere_radius, rotation_angles, rotation_order="XYZ", tol=1e-3, n_workers=None):
     """
     Finds surface fragments where a sphere of fixed radius can touch 
     without intersecting or penetrating the mesh elsewhere.
@@ -125,9 +129,13 @@ def find_accessible_surface(mesh_path, sphere_radius, rotate_x=0.0, rotate_y=0.0
         mesh.fill_holes(10)  # Try to fill holes
         mesh.clean(inplace=True) 
 
-    mesh = mesh.rotate_y(rotate_y, inplace=False)
-    mesh = mesh.rotate_x(rotate_x, inplace=False)    
-    mesh = mesh.rotate_z(rotate_z, inplace=False)
+    for axis in rotation_order:
+        if axis == 'X':
+            mesh = mesh.rotate_x(rotation_angles['X'], inplace=False)                
+        elif axis == 'Y':
+            mesh = mesh.rotate_y(rotation_angles['Y'], inplace=False)                
+        elif axis == 'Z':
+            mesh = mesh.rotate_z(rotation_angles['Z'], inplace=False) 
 
     # 2. Compute point normals (assumes outward orientation for closed meshes)
     mesh.compute_normals(cell_normals=False, point_normals=True, consistent_normals=True, auto_orient_normals=True, inplace=True)  
