@@ -15,6 +15,7 @@ import numpy as np
 
 from src import find_accessible_surface, find_accessible_surface_parallel, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
+from src import get_step_units
 
 class WorkerThread(threading.Thread):
     """Worker thread for running calculations without freezing the UI"""
@@ -261,8 +262,30 @@ class MainWindow:
         self.check_queue()
         
         # Bind mask_path change
-        self.mask_path.trace_add('write', self.update_mask_path)
-    
+        self.mask_path.trace_add('write', self.update_mask_path)        
+
+    def update_units_from_stp(self):
+        """Update the units combobox based on the current STP file."""
+        stp_path = self.mask_stp_path.get()
+        print("update_units_from_stp ", stp_path)
+        
+        if not stp_path or not os.path.exists(stp_path):
+            # If file doesn't exist, set default
+            self.units_var.set("metre")
+            return
+            
+        try:
+            step_units = get_step_units(stp_path)
+            print("update_units_from_stp ", step_units)
+            if step_units and step_units in self.units_list:
+                self.units_var.set(step_units)
+            else:
+                # If unknown unit, set to metre (OCC default)
+                self.units_var.set("metre")
+        except Exception as e:
+            print(f"Error reading STP units: {e}")
+            self.units_var.set("metre")        
+
     def setup_mask_tab(self):
         # Create scrollable frame
         canvas = tk.Canvas(self.mask_tab)
@@ -314,9 +337,28 @@ class MainWindow:
         # Radius
         radius_frame = ttk.Frame(scrollable_frame)
         radius_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(radius_frame, text="Радиус сферы:").pack(side=tk.LEFT)
+        ttk.Label(radius_frame, text="Радиус сферы (м):").pack(side=tk.LEFT)
         radius_entry = ttk.Entry(radius_frame, textvariable=self.radius_input)
         radius_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+        # Единицы измерения
+        units_frame = ttk.Frame(scrollable_frame)
+        units_frame.pack(fill=tk.X, pady=5)        
+        tk.Label(units_frame, text="Единицы измерения модели:").pack(side=tk.LEFT)
+        # self.units_list = ['м', 'см', 'мм', 'дюймы', 'футы']
+        # self.units_var = tk.StringVar(value="м")  # Default value
+
+        self.units_list = ['metre', 'centimetre', 'millimetre', 'inches']
+        self.units_var = tk.StringVar(value='millimetre')
+
+        self.combobox = ttk.Combobox(
+            units_frame,
+            textvariable=self.units_var,
+            values=self.units_list,
+            width=20
+        )    
+        self.combobox.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.update_units_from_stp()
         
         # Output directory
         outdir_frame = ttk.Frame(scrollable_frame)
@@ -493,6 +535,7 @@ class MainWindow:
     def on_stp_path_changed(self, *args):
         """Called when STP path is edited"""
         self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+        self.update_units_from_stp()
 
     def update_progress(self, message):
         self.message_queue.put(("progress", message))

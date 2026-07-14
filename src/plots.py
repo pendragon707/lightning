@@ -15,6 +15,37 @@ from OCC.Core.TopAbs import TopAbs_EDGE
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
 from OCC.Core.GCPnts import GCPnts_UniformAbscissa
 from OCC.Core.TopoDS import TopoDS_Edge, topods
+from OCC.Core.TColStd import TColStd_SequenceOfAsciiString
+
+def get_step_units(filepath):
+    step_reader = STEPControl_Reader()
+    status = step_reader.ReadFile(filepath)
+    
+    if status == IFSelect_RetDone:
+        # Create sequences to hold the unit names
+        length_units = TColStd_SequenceOfAsciiString()
+        angle_units = TColStd_SequenceOfAsciiString()
+        solid_angle_units = TColStd_SequenceOfAsciiString()
+        
+        # Retrieve the unit names
+        step_reader.FileUnits(length_units, angle_units, solid_angle_units)
+        
+        # print("Length Units found:")
+        # for i in range(length_units.Length()):
+        #     print(f"  - {length_units.Value(i + 1).ToCString()}")
+            
+        # print("\nAngle Units found:")
+        # for i in range(angle_units.Length()):
+        #     print(f"  - {angle_units.Value(i + 1).ToCString()}")
+            
+        # print("\nSolid Angle Units found:")
+        # for i in range(solid_angle_units.Length()):
+        #     print(f"  - {solid_angle_units.Value(i + 1).ToCString()}")
+            
+        return length_units.Value(1).ToCString()
+    else:
+        print("Error reading file.")
+        return None
 
 def extract_edge_points(shape, samples_per_edge=80):
     """Extract 3D point arrays from all edges in the model."""
