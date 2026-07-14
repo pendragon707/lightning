@@ -222,6 +222,9 @@ class MainWindow:
         self.mask_path = tk.StringVar(value="out/base/accessible_fragment.obj")
         self.plots_outdir = tk.StringVar(value=str(Path(self.mask_path.get()).parent))
 
+        self.units_list = ['metre', 'centimetre', 'millimetre', 'inches']
+        self.units_var = tk.StringVar(value="millimetre")  # Default order
+
         self.rotation_order = tk.StringVar(value="XYZ")  # Default order
         self.rotate_x = tk.DoubleVar(value=0.0)
         self.rotate_y = tk.DoubleVar(value=0.0)
@@ -271,7 +274,7 @@ class MainWindow:
         
         if not stp_path or not os.path.exists(stp_path):
             # If file doesn't exist, set default
-            self.units_var.set("metre")
+            self.units_var.set("millimetre")
             return
             
         try:
@@ -280,11 +283,11 @@ class MainWindow:
             if step_units and step_units in self.units_list:
                 self.units_var.set(step_units)
             else:
-                # If unknown unit, set to metre (OCC default)
-                self.units_var.set("metre")
+                # If unknown unit, set to millimetre (OCC default)
+                self.units_var.set("millimetre")
         except Exception as e:
             print(f"Error reading STP units: {e}")
-            self.units_var.set("metre")        
+            self.units_var.set("millimetre")        
 
     def setup_mask_tab(self):
         # Create scrollable frame
@@ -346,10 +349,7 @@ class MainWindow:
         units_frame.pack(fill=tk.X, pady=5)        
         tk.Label(units_frame, text="Единицы измерения модели:").pack(side=tk.LEFT)
         # self.units_list = ['м', 'см', 'мм', 'дюймы', 'футы']
-        # self.units_var = tk.StringVar(value="м")  # Default value
-
-        self.units_list = ['metre', 'centimetre', 'millimetre', 'inches']
-        self.units_var = tk.StringVar(value='millimetre')
+        # self.units_var = tk.StringVar(value="м")  # Default value                
 
         self.combobox = ttk.Combobox(
             units_frame,
@@ -584,12 +584,15 @@ class MainWindow:
         
         # Get parameters based on active tab
         current_tab = self.mode_notebook.index(self.mode_notebook.select())
+
+        radius_value = float(self.radius_input.get())
+        radius_in_meters = self.convert_to_meters(radius_value)        
         
         if current_tab == 0:  # Mask tab
             params = {
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
-                'radius': float(self.radius_input.get()),
+                'radius': radius_in_meters,
                 'paral': self.paral_var.get(),
                 'plots': self.plots_var.get(),                
                 'rotate_x': self.rotate_x.get(),
@@ -625,18 +628,19 @@ class MainWindow:
         # Get parameters based on active tab
         current_tab = self.mode_notebook.index(self.mode_notebook.select())
 
-        print(self.rotate_x.get())
-        print(self.rotate_y.get())
-        print(self.rotate_z.get())
+        radius_value = float(self.radius_input.get())
+        radius_in_meters = self.convert_to_meters(radius_value)
+
+        print("radius_value ", radius_value)
+        print("radius_in_meters ", radius_in_meters)
         
         if current_tab == 0:  # Mask tab
             params = {
                 'obj': self.mask_obj_path.get(),
                 'stp': self.mask_stp_path.get(),
-                'radius': float(self.radius_input.get()),
+                'radius': radius_in_meters,
                 'paral': self.paral_var.get(),
-                'plots': self.plots_var.get(),
-                # 'rotate': self.rotate_var.get(),
+                'plots': self.plots_var.get(),                
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
@@ -648,8 +652,7 @@ class MainWindow:
             params = {
                 'obj': self.plots_obj_path.get(),
                 'stp': self.plots_stp_path.get(),
-                'mask': self.mask_path.get(),
-                # 'rotate': self.rotate_var.get(),
+                'mask': self.mask_path.get(),                
                 'rotate_x': self.rotate_x.get(),
                 'rotate_y': self.rotate_y.get(),
                 'rotate_z': self.rotate_z.get(),
@@ -662,14 +665,32 @@ class MainWindow:
         self.worker = WorkerThread(task_type, params, self.update_progress, self.task_finished)
         self.worker.start()
 
+    def convert_to_meters(self, value):
+        """Convert a value from self.units to meters."""
+        unit = self.units_var.get()
+        
+        conversion_factors = {
+            'metre': 1.0,
+            'centimetre': 100,
+            'millimetre': 1000,
+            'inches': 39.37
+        }
+        
+        if unit in conversion_factors:
+            return value * conversion_factors[unit]
+        else:
+            # Default to millimetre if unknown (OCC default)
+            print(f"Unknown unit '{unit}', defaulting to millimetre")
+            return value * 1000
+
     def validate_file_exists(self, path_var, warning_label, file_type="file"):
         """Check if file exists and update warning label accordingly""" 
         file_path = path_var.get()
         if not file_path:
-            warning_label.config(text=f"⚠️ {file_type} path is empty!", foreground="red")
+            warning_label.config(text=f"⚠️ {file_type} путь не указан!", foreground="red")
             return False
         elif not Path(file_path).exists():
-            warning_label.config(text=f"⚠️ {file_type} not found!", foreground="red")
+            warning_label.config(text=f"⚠️ {file_type} не найден!", foreground="red")
             return False
         else:
             # Hide the label when file exists
