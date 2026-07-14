@@ -1,0 +1,25 @@
+{
+    "mask_obj_path": "/home/none/Projects/light/objects/T.obj",
+    "mask_stp_path": "objects/T.stp",
+    "radius_input": "50",
+    "mask_outdir": "new",
+    "plots_obj_path": "objects/base.obj",
+    "plots_stp_path": "objects/base.stp",
+    "mask_path": "out/base/accessible_fragment.obj",
+    "plots_outdir": "out/base",
+    "units_list": [
+        "metre",
+        "centimetre",
+        "millimetre",
+        "inches"
+    ],
+    "units_var": "millimetre",
+    "rotation_order": "YXZ",
+    "rotate_x": 270.0,
+    "rotate_y": 90.0,
+    "rotate_z": 0.0,
+    "paral_var": true,
+    "plots_var": true,
+    "window_title": "Расчет молниеопасных зон",
+    "window_geometry": "500x600"
+}

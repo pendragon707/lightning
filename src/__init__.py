@@ -3,3 +3,4 @@ from src.algo import find_accessible_surface, find_accessible_surface_parallel
 from src.utils import load_step, get_accessible_mesh
 
 from src.plots import get_step_units
+from src.config import AppConfig

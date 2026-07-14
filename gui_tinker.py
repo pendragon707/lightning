@@ -16,6 +16,7 @@ import numpy as np
 from src import find_accessible_surface, find_accessible_surface_parallel, load_step, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
 from src import get_step_units
+from src import AppConfig
 
 class WorkerThread(threading.Thread):
     """Worker thread for running calculations without freezing the UI"""
@@ -188,10 +189,21 @@ class WorkerThread(threading.Thread):
 
 
 class MainWindow:
-    def __init__(self):
+    def __init__(self, config_file: Optional[str] = None):        
+        if config_file and os.path.exists(config_file):
+            self.config = AppConfig.load_from_file(config_file)
+        else:
+            self.config = AppConfig()
+
+        # Define default settings directory
+        self.settings_dir = Path("settings")
+        self.settings_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
+
         self.root = tk.Tk()
         self.root.title("Расчет молниеопасных зон")
         self.root.geometry("500x600")
+
+        self.create_menu_bar()
         
         # Create main frame
         main_frame = ttk.Frame(self.root)
@@ -212,23 +224,23 @@ class MainWindow:
         self.mode_notebook.add(self.plots_tab, text="Построение графиков")
         
         # Initialize variables
-        self.mask_obj_path = tk.StringVar(value="objects/obt_LG.obj")
-        self.mask_stp_path = tk.StringVar(value="objects/obt_LG.stp")
-        self.radius_input = tk.StringVar(value="5000")
-        self.mask_outdir = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d-%H-%M"))
+        self.mask_obj_path = tk.StringVar(value=self.config.mask_obj_path)
+        self.mask_stp_path = tk.StringVar(value=self.config.mask_stp_path)
+        self.radius_input = tk.StringVar(value=self.config.radius_input)
+        self.mask_outdir = tk.StringVar(value=self.config.mask_outdir)
         
-        self.plots_obj_path = tk.StringVar(value="objects/base.obj")
-        self.plots_stp_path = tk.StringVar(value="objects/base.stp")
-        self.mask_path = tk.StringVar(value="out/base/accessible_fragment.obj")
-        self.plots_outdir = tk.StringVar(value=str(Path(self.mask_path.get()).parent))
+        self.plots_obj_path = tk.StringVar(value=self.config.plots_obj_path)
+        self.plots_stp_path = tk.StringVar(value=self.config.plots_stp_path)
+        self.mask_path = tk.StringVar(value=self.config.mask_path)
+        self.plots_outdir = tk.StringVar(value=self.config.plots_outdir)
 
-        self.units_list = ['metre', 'centimetre', 'millimetre', 'inches']
-        self.units_var = tk.StringVar(value="millimetre")  # Default order
+        self.units_list = self.config.units_list
+        self.units_var = tk.StringVar(value=self.config.units_var)
 
-        self.rotation_order = tk.StringVar(value="XYZ")  # Default order
-        self.rotate_x = tk.DoubleVar(value=0.0)
-        self.rotate_y = tk.DoubleVar(value=0.0)
-        self.rotate_z = tk.DoubleVar(value=0.0)
+        self.rotation_order = tk.StringVar(value=self.config.rotation_order)
+        self.rotate_x = tk.DoubleVar(value=self.config.rotate_x)
+        self.rotate_y = tk.DoubleVar(value=self.config.rotate_y)
+        self.rotate_z = tk.DoubleVar(value=self.config.rotate_z)
 
         # Setup tabs
         self.setup_mask_tab()
@@ -347,9 +359,7 @@ class MainWindow:
         # Единицы измерения
         units_frame = ttk.Frame(scrollable_frame)
         units_frame.pack(fill=tk.X, pady=5)        
-        tk.Label(units_frame, text="Единицы измерения модели:").pack(side=tk.LEFT)
-        # self.units_list = ['м', 'см', 'мм', 'дюймы', 'футы']
-        # self.units_var = tk.StringVar(value="м")  # Default value                
+        tk.Label(units_frame, text="Единицы измерения модели:").pack(side=tk.LEFT)              
 
         self.combobox = ttk.Combobox(
             units_frame,
@@ -376,13 +386,7 @@ class MainWindow:
         self.plots_var = tk.BooleanVar(value=True)
         plots_checkbox = ttk.Checkbutton(scrollable_frame, text="Построение графиков",
                                          variable=self.plots_var)
-        plots_checkbox.pack(anchor=tk.W, pady=5)
-
-        # self.rotate_var = tk.BooleanVar(value=False)
-        # rotate_checkbox = ttk.Checkbutton(scrollable_frame, text="Повернуть модель на Y=90,X=270",
-        #                                     variable=self.rotate_var)
-        # rotate_checkbox.pack(anchor=tk.W, pady=5)        
-
+        plots_checkbox.pack(anchor=tk.W, pady=5)    
 
         # Создаем фрейм для углов поворота
         rotation_frame = ttk.LabelFrame(scrollable_frame, text="Поворот модели", padding=5)
@@ -696,6 +700,128 @@ class MainWindow:
             # Hide the label when file exists
             warning_label.config(text="")
             return True
+
+    def create_menu_bar(self):
+        """Create the menu bar with File dropdown"""
+        # Create menu bar
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # Create File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Файл", menu=file_menu)
+        
+        # Add File menu items
+        file_menu.add_command(label="Сохранить настройки", 
+                              command=self.save_config, 
+                              accelerator="Ctrl+S")
+        file_menu.add_command(label="Загрузить настройки", 
+                              command=self.load_config,
+                              accelerator="Ctrl+O")
+        file_menu.add_separator()
+        file_menu.add_command(label="Выйти", 
+                              command=self.root.quit,
+                              accelerator="Ctrl+Q")
+        
+        # Create Help menu (optional)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Справка", menu=help_menu)
+        help_menu.add_command(label="О программе", command=self.show_about)
+        
+        # Bind keyboard shortcuts
+        self.root.bind('<Control-s>', lambda e: self.save_config())
+        self.root.bind('<Control-o>', lambda e: self.load_config())
+        self.root.bind('<Control-q>', lambda e: self.root.quit())
+
+    def show_about(self):
+        """Show about dialog"""
+        messagebox.showinfo(
+            "О программе",
+            "Расчет молниеопасных зон\n\n"
+            "Версия: 1.0\n"
+        )
+
+    def save_config(self):
+        """Save current configuration to JSON file in settings directory"""
+        # Generate default filename with timestamp
+        default_filename = f"config_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        default_path = self.settings_dir / default_filename
+        
+        filepath = filedialog.asksaveasfilename(
+            title="Сохранить конфигурацию",
+            initialdir=str(self.settings_dir),
+            initialfile=default_filename,
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if filepath:
+            try:
+                # Update config with current values
+                self.update_config_from_gui()
+                self.config.save_to_file(filepath)
+                messagebox.showinfo("Успех", f"Конфигурация сохранена в:\n{filepath}")
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось сохранить конфигурацию:\n{str(e)}")
+    
+    def load_config(self):
+        """Load configuration from JSON file in settings directory"""
+        filepath = filedialog.askopenfilename(
+            title="Загрузить конфигурацию",
+            initialdir=str(self.settings_dir),
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if filepath:
+            try:
+                # Load config from file
+                new_config = AppConfig.load_from_file(filepath)
+                self.config = new_config
+                
+                # Update GUI with loaded config
+                self.update_gui_from_config()
+                messagebox.showinfo("Успех", f"Конфигурация загружена из:\n{filepath}")
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось загрузить конфигурацию:\n{str(e)}")
+    
+    def update_config_from_gui(self):
+        """Update config object with current GUI values"""
+        self.config.mask_obj_path = self.mask_obj_path.get()
+        self.config.mask_stp_path = self.mask_stp_path.get()
+        self.config.radius_input = self.radius_input.get()
+        self.config.mask_outdir = self.mask_outdir.get()
+        self.config.plots_obj_path = self.plots_obj_path.get()
+        self.config.plots_stp_path = self.plots_stp_path.get()
+        self.config.mask_path = self.mask_path.get()
+        self.config.plots_outdir = self.plots_outdir.get()
+        self.config.units_var = self.units_var.get()
+        self.config.rotation_order = self.rotation_order.get()
+        self.config.rotate_x = self.rotate_x.get()
+        self.config.rotate_y = self.rotate_y.get()
+        self.config.rotate_z = self.rotate_z.get()
+        self.config.paral_var = self.paral_var.get()
+        self.config.plots_var = self.plots_var.get()
+    
+    def update_gui_from_config(self):
+        """Update GUI with values from config object"""
+        self.mask_obj_path.set(self.config.mask_obj_path)
+        self.mask_stp_path.set(self.config.mask_stp_path)
+        self.radius_input.set(self.config.radius_input)
+        self.mask_outdir.set(self.config.mask_outdir)
+        self.plots_obj_path.set(self.config.plots_obj_path)
+        self.plots_stp_path.set(self.config.plots_stp_path)
+        self.mask_path.set(self.config.mask_path)
+        self.plots_outdir.set(self.config.plots_outdir)
+        self.units_var.set(self.config.units_var)
+        self.rotation_order.set(self.config.rotation_order)
+        self.rotate_x.set(self.config.rotate_x)
+        self.rotate_y.set(self.config.rotate_y)
+        self.rotate_z.set(self.config.rotate_z)
+        self.paral_var.set(self.config.paral_var)
+        self.plots_var.set(self.config.plots_var)
+        
+        # Trigger validation after updating
+        self.validate_file_exists(self.mask_obj_path, self.obj_warning, "OBJ file")
+        self.validate_file_exists(self.mask_stp_path, self.stp_warning, "STP file")
+        self.update_units_from_stp()
 
     def run(self):
         self.root.mainloop()
