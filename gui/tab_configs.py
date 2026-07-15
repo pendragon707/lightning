@@ -140,3 +140,6 @@ class TabConfig(ABC):
         else:
             warning_label.config(text="")
             return True
+
+if __name__ == "__main__":
+    pass            

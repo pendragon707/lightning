@@ -1,0 +1,3 @@
+[tool.pyproject-appimage]
+script = "gui.py"
+output = "None.AppImage"

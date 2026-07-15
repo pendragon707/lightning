@@ -22,3 +22,6 @@ def get_accessible_mesh(result):
     accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
     accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
     return accessible_mesh
+
+if __name__ == "__main__":
+    pass    

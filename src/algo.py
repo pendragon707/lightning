@@ -183,23 +183,3 @@ def find_accessible_surface(mesh_path, sphere_radius, rotation_angles, rotation_
 
 if __name__ == "__main__":
     pass
-    # # path = "/home/none/Projects/lightning/45.03М (Ту-22М3)/Молниеопасные зоны. Blender_1/45_65-М.obj"
-    # path = "/home/none/Projects/light/objects/obt_LG.obj"
-    # radius = 50000  
-    
-    # # result, centers = find_accessible_surface(path, sphere_radius=radius, render=True)
-    # result, centers = find_accessible_surface_parallel(path, sphere_radius=radius, render=True)
-    
-    # # Extract accessible fragment
-    # accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    # accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    # accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
-    
-    # # Visualization
-    # p = pv.Plotter()
-    # p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    # p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
-    # p.show() 
-    
-    # # Save result
-    # accessible_mesh.save("images/accessible_fragment.obj")    

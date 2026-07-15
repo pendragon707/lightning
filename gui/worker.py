@@ -184,3 +184,6 @@ class WorkerThread(threading.Thread):
 
         self.progress_callback(f"Графики построены")
         self.finished_callback(True, "")   
+
+if __name__ == "__main__":
+    pass        

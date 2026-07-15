@@ -95,34 +95,6 @@ class MaskTabConfig(TabConfig):
         self.validate_files()
         
         return self.frame
-    
-    # def on_file_changed(self, var, warning, file_type):
-    #     """Override to add STP-specific behavior"""
-    #     super().on_file_changed(var, warning, file_type)
-        
-    #     # If STP file changed, update units
-    #     if file_type == "STP file" and var == self.mask_stp_path:
-    #         self.update_units_from_stp()
-    
-    # def update_units_from_stp(self):
-    #     """Update the units combobox based on the current STP file."""
-    #     stp_path = self.mask_stp_path.get()
-        
-    #     if not stp_path or not Path(stp_path).exists():
-    #         # If file doesn't exist, set default
-    #         self.units_var.set("millimetre")
-    #         return
-            
-    #     try:            
-    #         step_units = get_step_units(stp_path)
-    #         if step_units and step_units in self.config.units_list:
-    #             self.units_var.set(step_units)
-    #         else:
-    #             # If unknown unit, set to millimetre (OCC default)
-    #             self.units_var.set("millimetre")
-    #     except Exception as e:
-    #         print(f"Error reading STP units: {e}")
-    #         self.units_var.set("millimetre")
 
     def get_params(self):
         """Get parameters for task execution"""
@@ -168,3 +140,6 @@ class MaskTabConfig(TabConfig):
         self.paral_var.set(config.paral_var)
         self.plots_var.set(config.plots_var)
         self.validate_files()
+
+if __name__ == "__main__":
+    pass        

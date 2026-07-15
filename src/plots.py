@@ -259,3 +259,6 @@ def plot_mesh_mask(mesh, mesh_mask=None, out_dir=None, save=True):
         p.show(screenshot=image_path)  
     else:
         p.show()
+
+if __name__ == "__main__":
+    pass        

@@ -120,3 +120,6 @@ class PlotsTabConfig(TabConfig):
         
         # Auto-update output directory based on mask path
         self.plots_outdir.set(str(Path(self.mask_path.get()).parent))
+
+if __name__ == "__main__":
+    pass        
