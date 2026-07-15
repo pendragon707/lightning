@@ -452,6 +452,10 @@ class MainWindow:
         ttk.Button(obj_frame, text="Найти",
                   command=lambda: self.browse_file(self.plots_obj_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
         
+        # Warning label for OBJ
+        self.obj_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.obj_warning.pack(fill=tk.X, pady=(0, 5), padx=20)        
+
         # STP file
         stp_frame = ttk.Frame(scrollable_frame)
         stp_frame.pack(fill=tk.X, pady=5)
@@ -460,7 +464,11 @@ class MainWindow:
         stp_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         ttk.Button(stp_frame, text="Найти",
                   command=lambda: self.browse_file(self.plots_stp_path, "STEP files (*.stp)")).pack(side=tk.RIGHT)
-        
+
+        # Warning label for STP
+        self.stp_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.stp_warning.pack(fill=tk.X, pady=(0, 5), padx=20)      
+
         # Mask file
         mask_frame = ttk.Frame(scrollable_frame)
         mask_frame.pack(fill=tk.X, pady=5)
@@ -470,6 +478,16 @@ class MainWindow:
         ttk.Button(mask_frame, text="Найти",
                   command=lambda: self.browse_file(self.mask_path, "OBJ files (*.obj)")).pack(side=tk.RIGHT)
         
+        # Warning label for Mask
+        self.mask_warning = ttk.Label(scrollable_frame, text="", foreground="red")
+        self.mask_warning.pack(fill=tk.X, pady=(0, 5), padx=20)
+
+        #  Validate initial files
+        self.validate_file_exists(self.plots_obj_path, self.obj_warning, "OBJ file")
+        self.validate_file_exists(self.plots_stp_path, self.stp_warning, "STP file")
+        self.validate_file_exists(self.mask_path, self.mask_warning, "STP file")
+        self.setup_file_validation()        
+
         # Output directory
         outdir_frame = ttk.Frame(scrollable_frame)
         outdir_frame.pack(fill=tk.X, pady=5)
