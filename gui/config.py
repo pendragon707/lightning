@@ -8,14 +8,14 @@ import json
 @dataclass
 class AppConfig:
     # Mask tab defaults
-    mask_obj_path: str = "objects/obt_LG.obj"
-    mask_stp_path: str = "objects/obt_LG.stp"
-    radius_input: str = "5000"
+    mask_obj_path: str = "objects/T.obj"
+    mask_stp_path: str = ""
+    radius_input: str = "50"
     mask_outdir: str = None  # Will be set in __post_init__
     
     # Plots tab defaults
-    plots_obj_path: str = "objects/base.obj"
-    plots_stp_path: str = "objects/base.stp"
+    plots_obj_path: str = "out/base/base.obj"
+    plots_stp_path: str = "out/base/base.stp"
     mask_path: str = "out/base/accessible_fragment.obj"
     plots_outdir: str = None  # Will be set in __post_init__
     

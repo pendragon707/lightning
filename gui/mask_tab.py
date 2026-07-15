@@ -1,0 +1,170 @@
+# mask_tab.py
+import tkinter as tk
+from tkinter import ttk
+from pathlib import Path
+from .tab_configs import TabConfig
+
+from src import get_step_units
+
+class MaskTabConfig(TabConfig):
+    """Configuration for the Mask tab"""
+    
+    def __init__(self, parent, config):
+        super().__init__(parent, config, "mask")
+        self.mask_obj_path = tk.StringVar(value=config.mask_obj_path)
+        self.mask_stp_path = tk.StringVar(value=config.mask_stp_path)
+        self.radius_input = tk.StringVar(value=config.radius_input)
+        self.mask_outdir = tk.StringVar(value=config.mask_outdir)
+        self.units_var = tk.StringVar(value=config.units_var)
+        self.rotation_order = tk.StringVar(value=config.rotation_order)
+        self.rotate_x = tk.DoubleVar(value=config.rotate_x)
+        self.rotate_y = tk.DoubleVar(value=config.rotate_y)
+        self.rotate_z = tk.DoubleVar(value=config.rotate_z)
+        self.paral_var = tk.BooleanVar(value=config.paral_var)
+        self.plots_var = tk.BooleanVar(value=config.plots_var)
+        
+        # Warning labels
+        self.obj_warning = None
+        self.stp_warning = None
+        
+    def setup(self, notebook):
+        """Setup the mask tab UI"""
+        self.frame = ttk.Frame(notebook)
+        notebook.add(self.frame, text="Расчет молниеопасных зон")
+        
+        scrollable_frame = self.create_scrollable_frame()
+        
+        # OBJ file
+        self.create_file_input(
+            scrollable_frame, "Модель (*.obj):", 
+            self.mask_obj_path, "OBJ files (*.obj)", "obj_warning", "OBJ file"
+        )
+        
+        # STP file
+        self.create_file_input(
+            scrollable_frame, "Модель (*.stp):", 
+            self.mask_stp_path, "STEP files (*.stp)", "stp_warning", "STP file"
+        )
+        
+        # Radius
+        radius_frame = ttk.Frame(scrollable_frame)
+        radius_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(radius_frame, text="Радиус сферы (м):").pack(side=tk.LEFT)
+        radius_entry = ttk.Entry(radius_frame, textvariable=self.radius_input)
+        radius_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # Units
+        units_frame = ttk.Frame(scrollable_frame)
+        units_frame.pack(fill=tk.X, pady=5)
+        tk.Label(units_frame, text="Единицы измерения модели:").pack(side=tk.LEFT)
+        self.combobox = ttk.Combobox(
+            units_frame,
+            textvariable=self.units_var,
+            values=self.config.units_list,
+            width=20
+        )
+        self.combobox.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # Output directory
+        outdir_frame = ttk.Frame(scrollable_frame)
+        outdir_frame.pack(fill=tk.X, pady=5)
+        ttk.Label(outdir_frame, text="Директория сохранения:").pack(side=tk.LEFT)
+        outdir_entry = ttk.Entry(outdir_frame, textvariable=self.mask_outdir)
+        outdir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        # Options
+        paral_checkbox = ttk.Checkbutton(
+            scrollable_frame, text="Включить параллельность",
+            variable=self.paral_var
+        )
+        paral_checkbox.pack(anchor=tk.W, pady=5)
+        
+        plots_checkbox = ttk.Checkbutton(
+            scrollable_frame, text="Построение графиков",
+            variable=self.plots_var
+        )
+        plots_checkbox.pack(anchor=tk.W, pady=5)
+        
+        # Rotation controls
+        self.create_rotation_controls(
+            scrollable_frame, self.rotation_order, 
+            self.rotate_x, self.rotate_y, self.rotate_z
+        )
+        
+        # Validate initial files
+        self.validate_files()
+        
+        return self.frame
+    
+    # def on_file_changed(self, var, warning, file_type):
+    #     """Override to add STP-specific behavior"""
+    #     super().on_file_changed(var, warning, file_type)
+        
+    #     # If STP file changed, update units
+    #     if file_type == "STP file" and var == self.mask_stp_path:
+    #         self.update_units_from_stp()
+    
+    # def update_units_from_stp(self):
+    #     """Update the units combobox based on the current STP file."""
+    #     stp_path = self.mask_stp_path.get()
+        
+    #     if not stp_path or not Path(stp_path).exists():
+    #         # If file doesn't exist, set default
+    #         self.units_var.set("millimetre")
+    #         return
+            
+    #     try:            
+    #         step_units = get_step_units(stp_path)
+    #         if step_units and step_units in self.config.units_list:
+    #             self.units_var.set(step_units)
+    #         else:
+    #             # If unknown unit, set to millimetre (OCC default)
+    #             self.units_var.set("millimetre")
+    #     except Exception as e:
+    #         print(f"Error reading STP units: {e}")
+    #         self.units_var.set("millimetre")
+
+    def get_params(self):
+        """Get parameters for task execution"""
+        return {
+            'obj': self.mask_obj_path.get(),
+            'stp': self.mask_stp_path.get(),
+            'radius': float(self.radius_input.get()),
+            'paral': self.paral_var.get(),
+            'plots': self.plots_var.get(),
+            'rotate_x': self.rotate_x.get(),
+            'rotate_y': self.rotate_y.get(),
+            'rotate_z': self.rotate_z.get(),
+            'rotation_order': self.rotation_order.get(),
+            'outdir': self.mask_outdir.get()
+        }
+    
+    def update_config(self, config):
+        """Update config with current values"""
+        config.mask_obj_path = self.mask_obj_path.get()
+        config.mask_stp_path = self.mask_stp_path.get()
+        config.radius_input = self.radius_input.get()
+        config.mask_outdir = self.mask_outdir.get()
+        config.units_var = self.units_var.get()
+        config.rotation_order = self.rotation_order.get()
+        config.rotate_x = self.rotate_x.get()
+        config.rotate_y = self.rotate_y.get()
+        config.rotate_z = self.rotate_z.get()
+        config.paral_var = self.paral_var.get()
+        config.plots_var = self.plots_var.get()
+        return config
+    
+    def load_from_config(self, config):
+        """Load values from config"""
+        self.mask_obj_path.set(config.mask_obj_path)
+        self.mask_stp_path.set(config.mask_stp_path)
+        self.radius_input.set(config.radius_input)
+        self.mask_outdir.set(config.mask_outdir)
+        self.units_var.set(config.units_var)
+        self.rotation_order.set(config.rotation_order)
+        self.rotate_x.set(config.rotate_x)
+        self.rotate_y.set(config.rotate_y)
+        self.rotate_z.set(config.rotate_z)
+        self.paral_var.set(config.paral_var)
+        self.plots_var.set(config.plots_var)
+        self.validate_files()
