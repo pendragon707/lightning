@@ -97,7 +97,6 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, 
     
     # Parallel execution
     with ctx.Pool(n_workers) as pool:
-    # with Pool(n_workers) as pool:
         results = pool.starmap(process_chunk, args)
     
     # Combine results

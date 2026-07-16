@@ -13,8 +13,9 @@ import queue
 import pyvista as pv
 import numpy as np
 
-from src import find_accessible_surface, find_accessible_surface_parallel, load_step, get_accessible_mesh
+from src import find_accessible_surface, find_accessible_surface_parallel, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
+from src import load_step, rotate_step_shape
 
 class WorkerThread(threading.Thread):
     """Worker thread for running calculations without freezing the UI"""
@@ -82,19 +83,28 @@ class WorkerThread(threading.Thread):
         print(save_obj_path)
         shutil.copy(self.params['obj'], save_obj_path)
 
-        save_stp_path = out_path / Path(self.params['stp']).name
-        print(save_stp_path)
-        shutil.copy(self.params['stp'], save_stp_path)        
+        if 'stp' in self.params:
+            save_stp_path = out_path / Path(self.params['stp']).name
+            print(save_stp_path)
+            shutil.copy(self.params['stp'], save_stp_path)        
         
         # Generate plots if requested
         if self.params['plots']:  
             self.progress_callback("Генерация графиков...")      
             draw_sphere(self.params['obj'], self.params['radius'], centers[3], out_dir=out_path)
-            
-            shape = load_step(self.params['stp'])
-            plot_mesh_with_projections(accessible_mesh, shape, out_dir=out_path)
+                        
             plot_mesh_mask(result, accessible_mesh, out_dir=out_path)
-            get_2d_mask(accessible_mesh, out_dir=out_path)
+
+            if 'stp' in self.params:
+                shape = load_step(self.params['stp'])
+                shape = rotate_step_shape(shape, rotation_angles, self.params['rotation_order'])
+
+                plot_mesh_with_projections(accessible_mesh, shape, out_dir=out_path)
+                get_2d_mask(accessible_mesh, out_dir=out_path)
+            else:
+                plot_mesh_with_projections(accessible_mesh, out_dir=out_path)
+                get_2d_mask(accessible_mesh, out_dir=out_path)
+
             self.progress_callback(f"Графики сохранены в: {out_path}")
         
         self.finished_callback(True, str(out_path))
@@ -132,6 +142,7 @@ class WorkerThread(threading.Thread):
         
         self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
         shape = load_step(self.params['stp'])
+        shape = rotate_step_shape(shape, rotation_angles, self.params['rotation_order'])
         
         self.progress_callback("Генерация графиков...")
         plot_mesh_with_projections(mesh_mask, shape, out_dir=out_path)

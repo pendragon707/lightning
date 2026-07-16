@@ -107,10 +107,10 @@ class MaskTabConfig(TabConfig):
             'radius': float(self.radius_input.get()),
             'paral': self.paral_var.get(),
             'plots': self.plots_var.get(),
-            'rotate_x': self.rotate_x.get(),
-            'rotate_y': self.rotate_y.get(),
-            'rotate_z': self.rotate_z.get(),
-            'rotation_order': self.rotation_order.get(),
+            'rotate_x': self.mask_rotate_x.get(),
+            'rotate_y': self.mask_rotate_y.get(),
+            'rotate_z': self.mask_rotate_z.get(),
+            'rotation_order': self.mask_rotation_order.get(),
             'outdir': self.mask_outdir.get()
         }
 

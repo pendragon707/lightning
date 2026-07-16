@@ -1,10 +1,7 @@
 from OCC.Core.STEPControl import STEPControl_Reader
 from OCC.Core.IFSelect import IFSelect_RetDone
-from OCC.Core.TopExp import TopExp_Explorer
-from OCC.Core.TopAbs import TopAbs_EDGE
-from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
-from OCC.Core.GCPnts import GCPnts_UniformAbscissa
-from OCC.Core.TopoDS import TopoDS_Edge, topods
+from OCC.Core.gp import gp_Trsf, gp_Ax1, gp_Pnt, gp_Dir
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 
 import numpy as np
 
@@ -22,6 +19,86 @@ def get_accessible_mesh(result):
     accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
     accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
     return accessible_mesh
+
+# def rotate_step_shape(shape, angles, rotation_order):
+#     """Apply rotations to STEP shape using OCC transformations."""
+#     print("rotate_step_shape ", angles, rotation_order)
+    
+#     # Start with identity transformation
+#     transform = gp_Trsf()
+    
+#     # Apply rotations in the specified order
+#     first_rotation = True
+#     for axis in rotation_order:
+#         angle_rad = angles[axis] * 3.14159 / 180.0
+        
+#         rotation = gp_Trsf()
+#         if axis == 'X':
+#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(1,0,0)), angle_rad)
+#         elif axis == 'Y':
+#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,1,0)), angle_rad)
+#         elif axis == 'Z':
+#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,0,1)), angle_rad)
+        
+#         if first_rotation:
+#             transform = rotation
+#             first_rotation = False
+#         else:
+#             transform.Multiply(rotation)
+    
+#     # Apply transformation to the shape
+#     transformer = BRepBuilderAPI_Transform(shape, transform, True)
+#     transformer.Build()
+#     return transformer.Shape()
+
+def rotate_step_shape(shape, angles, rotation_order, center_point=None):
+    """Rotate STEP shape to match PyVista rotation."""
+    from OCC.Core.gp import gp_Trsf, gp_Ax1, gp_Pnt, gp_Dir, gp_Vec
+    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+    
+    # Use provided center or default to origin
+    if center_point is None:
+        center = gp_Pnt(0, 0, 0)
+    else:
+        center = gp_Pnt(center_point[0], center_point[1], center_point[2])
+    
+    # Initialize transformations
+    final_transform = gp_Trsf()  # Identity by default
+    
+    for axis in rotation_order:
+        angle_rad = angles[axis] * 3.14159 / 180.0
+        
+        # Translation to origin
+        to_origin = gp_Trsf()
+        to_origin.SetTranslation(gp_Vec(-center.X(), -center.Y(), -center.Z()))
+        
+        # Rotation
+        rotation = gp_Trsf()
+        if axis == 'X':
+            rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(1,0,0)), angle_rad)
+        elif axis == 'Y':
+            rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,1,0)), angle_rad)
+        elif axis == 'Z':
+            rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,0,1)), angle_rad)
+        
+        # Translation back
+        from_origin = gp_Trsf()
+        from_origin.SetTranslation(gp_Vec(center.X(), center.Y(), center.Z()))
+        
+        # Combine: final_transform = from_origin * rotation * to_origin * final_transform
+        # Note: Order of multiplication matters!
+        temp = gp_Trsf()
+        temp.Multiply(to_origin)
+        temp.Multiply(rotation)
+        temp.Multiply(from_origin)
+        
+        # Apply to final transform
+        final_transform = temp.Multiplied(final_transform)
+    
+    # Apply transformation
+    transformer = BRepBuilderAPI_Transform(shape, final_transform, True)
+    transformer.Build()
+    return transformer.Shape()
 
 if __name__ == "__main__":
     pass    

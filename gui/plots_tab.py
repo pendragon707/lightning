@@ -90,10 +90,10 @@ class PlotsTabConfig(TabConfig):
             'obj': self.plots_obj_path.get(),
             'stp': self.plots_stp_path.get(),
             'mask': self.mask_path.get(),
-            'rotate_x': self.rotate_x.get(),
-            'rotate_y': self.rotate_y.get(),
-            'rotate_z': self.rotate_z.get(),
-            'rotation_order': self.rotation_order.get(),
+            'rotate_x': self.plots_rotate_x.get(),
+            'rotate_y': self.plots_rotate_y.get(),
+            'rotate_z': self.plots_rotate_z.get(),
+            'rotation_order': self.plots_rotation_order.get(),
             'outdir': self.plots_outdir.get()
         }
     

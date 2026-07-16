@@ -287,7 +287,7 @@ class MainWindow:
                 for tab in self.tabs.values():
                     tab.update_config(self.config)
                 self.config.save_to_file(filepath)
-                messagebox.showinfo("Успех", f"Конфигурация сохранена в:\n{filepath}")
+                # messagebox.showinfo("Успех", f"Конфигурация сохранена в:\n{filepath}")
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось сохранить конфигурацию:\n{str(e)}")
     
@@ -303,7 +303,7 @@ class MainWindow:
                 self.config = AppConfig.load_from_file(filepath)
                 for tab in self.tabs.values():
                     tab.load_from_config(self.config)
-                messagebox.showinfo("Успех", f"Конфигурация загружена из:\n{filepath}")
+                # messagebox.showinfo("Успех", f"Конфигурация загружена из:\n{filepath}")
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось загрузить конфигурацию:\n{str(e)}")
     

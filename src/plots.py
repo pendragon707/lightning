@@ -110,7 +110,7 @@ def plot_projections(shape, views=("front", "side", "top", "bottom")):
         
     return contours_2d
 
-def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bottom"), out_dir=None, contours=False):
+def plot_mesh_with_projections(mesh, shape = None, views=("front", "side", "top", "bottom"), out_dir=None):
     """
     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
     
@@ -120,7 +120,8 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bott
     - views: tuple of views to plot
     """
     # Extract edge points from shape
-    edges_3d = extract_edge_points(shape)
+    if shape:
+        edges_3d = extract_edge_points(shape)
     
     # Create subplots
     fig, axes = plt.subplots(1, 4, figsize=(18, 6))
@@ -130,7 +131,7 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bott
         ax = axes[view_map[view]]
         
         # 1. Plot shape contours
-        if contours:
+        if shape:
             contours_2d = project_to_2d(edges_3d, view)
             for x, y in contours_2d:
                 ax.plot(x, y, 'k-', linewidth=1.5, alpha=0.7, label='Shape Contour')
@@ -157,12 +158,15 @@ def plot_mesh_with_projections(mesh, shape, views=("front", "side", "top", "bott
 ### ----------------------------------------------------------------------
 
 
-def get_2d_mask(mesh, contours = None, images=None, out_dir=None):
+def get_2d_mask(mesh, shape = None, images=None, out_dir=None):
     projections = {
         'front': (0, -1, 0),   # looking along Y axis
         'top': (0, 0, 1),      # looking along Z axis  
         'side': (-1, 0, 0)     # looking along X axis
-    }
+    }    
+
+    if shape:
+        edges_3d = extract_edge_points(shape)
 
     for name, direction in projections.items():
         # Project points onto plane perpendicular to direction
@@ -183,11 +187,21 @@ def get_2d_mask(mesh, contours = None, images=None, out_dir=None):
         if images:
             plotter.add_background_image( Path(__file__).resolve().parent / "images" / images[name])
 
-        if contours:
-            for i, (x, y) in enumerate(contours[name]):
-                points_3d = np.column_stack((x, y, np.zeros_like(x)))
-                plotter.add_lines(points_3d, color='black', width=1, label=f'Contour {i}')
-
+        if shape:
+            # For each 3D edge, project it to 2D and plot
+            for edge_3d in edges_3d:
+                # Project the 3D edge points onto the plane perpendicular to direction
+                # This is the same projection used for the mesh
+                edge_projected = edge_3d - np.outer(np.dot(edge_3d, normal), normal)
+                
+                # Extract x, y coordinates (the third coordinate will be zero after projection)
+                x = edge_projected[:, 0]
+                y = edge_projected[:, 1]
+                
+                # Create 3D points with z=0 for plotting (or keep the projected z if you want)
+                points_2d_projected = np.column_stack((x, y, np.zeros_like(x)))
+                plotter.add_lines(points_2d_projected, color='black', width=2, label='Contour')
+                
         plotter.add_mesh(projected_mesh, color='red', show_edges=False, smooth_shading=True)
         plotter.view_xy() if name == 'top' else plotter.view_xz() if name == 'front' else plotter.view_yz()
         
