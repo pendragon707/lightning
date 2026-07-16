@@ -14,10 +14,10 @@ class PlotsTabConfig(TabConfig):
         self.plots_stp_path = tk.StringVar(value=config.plots_stp_path)
         self.mask_path = tk.StringVar(value=config.mask_path)
         self.plots_outdir = tk.StringVar(value=config.plots_outdir)
-        self.rotation_order = tk.StringVar(value=config.rotation_order)
-        self.rotate_x = tk.DoubleVar(value=config.rotate_x)
-        self.rotate_y = tk.DoubleVar(value=config.rotate_y)
-        self.rotate_z = tk.DoubleVar(value=config.rotate_z)
+        self.plots_rotation_order = tk.StringVar(value=config.plots_rotation_order)
+        self.plots_rotate_x = tk.DoubleVar(value=config.plots_rotate_x)
+        self.plots_rotate_y = tk.DoubleVar(value=config.plots_rotate_y)
+        self.plots_rotate_z = tk.DoubleVar(value=config.plots_rotate_z)
         
         # Warning labels
         self.obj_warning = None
@@ -58,8 +58,11 @@ class PlotsTabConfig(TabConfig):
         
         # Rotation controls
         self.create_rotation_controls(
-            scrollable_frame, self.rotation_order, 
-            self.rotate_x, self.rotate_y, self.rotate_z
+            scrollable_frame, 
+            self.plots_rotation_order, 
+            self.plots_rotate_x, 
+            self.plots_rotate_y, 
+            self.plots_rotate_z
         )
 
         # Set up mask path update
@@ -100,10 +103,10 @@ class PlotsTabConfig(TabConfig):
         config.plots_stp_path = self.plots_stp_path.get()
         config.mask_path = self.mask_path.get()
         config.plots_outdir = self.plots_outdir.get()
-        config.rotation_order = self.rotation_order.get()
-        config.rotate_x = self.rotate_x.get()
-        config.rotate_y = self.rotate_y.get()
-        config.rotate_z = self.rotate_z.get()
+        config.plots_rotation_order = self.plots_rotation_order.get()
+        config.plots_rotate_x = self.plots_rotate_x.get()
+        config.plots_rotate_y = self.plots_rotate_y.get()
+        config.plots_rotate_z = self.plots_rotate_z.get()
         return config
     
     def load_from_config(self, config):
@@ -112,10 +115,10 @@ class PlotsTabConfig(TabConfig):
         self.plots_stp_path.set(config.plots_stp_path)
         self.mask_path.set(config.mask_path)
         self.plots_outdir.set(config.plots_outdir)
-        self.rotation_order.set(config.rotation_order)
-        self.rotate_x.set(config.rotate_x)
-        self.rotate_y.set(config.rotate_y)
-        self.rotate_z.set(config.rotate_z)
+        self.plots_rotation_order.set(config.plots_rotation_order)
+        self.plots_rotate_x.set(config.plots_rotate_x)
+        self.plots_rotate_y.set(config.plots_rotate_y)
+        self.plots_rotate_z.set(config.plots_rotate_z)
         self.validate_files()
         
         # Auto-update output directory based on mask path

@@ -23,7 +23,7 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
 
 def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, rotation_order="XYZ", tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
-    # ctx = mp.get_context('spawn')
+    ctx = mp.get_context('spawn')
 
     mesh = pv.read(mesh_path)
     mesh.clean(inplace=True)
@@ -96,8 +96,8 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, 
         ))
     
     # Parallel execution
-    # with ctx.Pool(n_workers) as pool:
-    with Pool(n_workers) as pool:
+    with ctx.Pool(n_workers) as pool:
+    # with Pool(n_workers) as pool:
         results = pool.starmap(process_chunk, args)
     
     # Combine results

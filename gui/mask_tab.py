@@ -16,10 +16,10 @@ class MaskTabConfig(TabConfig):
         self.radius_input = tk.StringVar(value=config.radius_input)
         self.mask_outdir = tk.StringVar(value=config.mask_outdir)
         self.units_var = tk.StringVar(value=config.units_var)
-        self.rotation_order = tk.StringVar(value=config.rotation_order)
-        self.rotate_x = tk.DoubleVar(value=config.rotate_x)
-        self.rotate_y = tk.DoubleVar(value=config.rotate_y)
-        self.rotate_z = tk.DoubleVar(value=config.rotate_z)
+        self.mask_rotation_order = tk.StringVar(value=config.mask_rotation_order)
+        self.mask_rotate_x = tk.DoubleVar(value=config.mask_rotate_x)
+        self.mask_rotate_y = tk.DoubleVar(value=config.mask_rotate_y)
+        self.mask_rotate_z = tk.DoubleVar(value=config.mask_rotate_z)
         self.paral_var = tk.BooleanVar(value=config.paral_var)
         self.plots_var = tk.BooleanVar(value=config.plots_var)
         
@@ -87,8 +87,11 @@ class MaskTabConfig(TabConfig):
         
         # Rotation controls
         self.create_rotation_controls(
-            scrollable_frame, self.rotation_order, 
-            self.rotate_x, self.rotate_y, self.rotate_z
+            scrollable_frame, 
+            self.mask_rotation_order, 
+            self.mask_rotate_x, 
+            self.mask_rotate_y, 
+            self.mask_rotate_z
         )
         
         # Validate initial files
@@ -98,9 +101,9 @@ class MaskTabConfig(TabConfig):
 
     def get_params(self):
         """Get parameters for task execution"""
-        return {
+
+        params = {
             'obj': self.mask_obj_path.get(),
-            'stp': self.mask_stp_path.get(),
             'radius': float(self.radius_input.get()),
             'paral': self.paral_var.get(),
             'plots': self.plots_var.get(),
@@ -110,6 +113,16 @@ class MaskTabConfig(TabConfig):
             'rotation_order': self.rotation_order.get(),
             'outdir': self.mask_outdir.get()
         }
+
+        stp_path = self.mask_stp_path.get()
+        if stp_path and Path(stp_path).exists():
+            params['stp'] = stp_path
+        else:
+            print("STP файл не найден или не указан")
+            # params['stp'] = None
+
+        return params
+
     
     def update_config(self, config):
         """Update config with current values"""
@@ -118,10 +131,10 @@ class MaskTabConfig(TabConfig):
         config.radius_input = self.radius_input.get()
         config.mask_outdir = self.mask_outdir.get()
         config.units_var = self.units_var.get()
-        config.rotation_order = self.rotation_order.get()
-        config.rotate_x = self.rotate_x.get()
-        config.rotate_y = self.rotate_y.get()
-        config.rotate_z = self.rotate_z.get()
+        config.mask_rotation_order = self.mask_rotation_order.get()
+        config.mask_rotate_x = self.mask_rotate_x.get()
+        config.mask_rotate_y = self.mask_rotate_y.get()
+        config.mask_rotate_z = self.mask_rotate_z.get()
         config.paral_var = self.paral_var.get()
         config.plots_var = self.plots_var.get()
         return config
@@ -133,10 +146,10 @@ class MaskTabConfig(TabConfig):
         self.radius_input.set(config.radius_input)
         self.mask_outdir.set(config.mask_outdir)
         self.units_var.set(config.units_var)
-        self.rotation_order.set(config.rotation_order)
-        self.rotate_x.set(config.rotate_x)
-        self.rotate_y.set(config.rotate_y)
-        self.rotate_z.set(config.rotate_z)
+        self.mask_rotation_order.set(config.mask_rotation_order)
+        self.mask_rotate_x.set(config.mask_rotate_x)
+        self.mask_rotate_y.set(config.mask_rotate_y)
+        self.mask_rotate_z.set(config.mask_rotate_z)
         self.paral_var.set(config.paral_var)
         self.plots_var.set(config.plots_var)
         self.validate_files()
