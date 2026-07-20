@@ -3,6 +3,8 @@ import os
 import queue
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
+
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
