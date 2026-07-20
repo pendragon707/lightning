@@ -14,29 +14,52 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: "3.14" 
+          python-version: "3.11" 
           channels: conda-forge
           activate-environment: occ-build          
 
       - name: Install dependencies
         run: |
-          conda install -y pythonocc-core numpy scipy pyvista pyside6 pyinstaller
+          conda install -y pythonocc-core numpy scipy pyvista pyinstaller
 
       - name: Build executable
         run: |
           # 1. Get conda env root path
           $envPath = conda run -n occ-build python -c "import sys; print(sys.prefix)"
           
-          # 2. Create missing QtWebEngine locale dir (satisfies PyInstaller's path check)
-          mkdir -Force "$envPath\Library\share\qt6\translations\qtwebengine_locales"
-          
-          # 3. Build with WebEngine excluded (saves ~80MB & avoids Chromium bundling)
           conda run -n occ-build pyinstaller --clean --onedir --windowed `
             --name MyApp `
+            --add-data "src;src" `
+            --add-data "gui;gui" `
+            --add-data "$envPath\Library\bin\*.dll;." `
+            --hidden-import numpy `
+            --hidden-import scipy `
+            --hidden-import pyvista `
+            --hidden-import OCC `
+            --hidden-import OCC.Core `
+            --hidden-import OCC.Core.STEPControl `
+            --hidden-import OCC.Core.IFSelect `
+            --hidden-import OCC.Core.TopAbs `
+            --hidden-import OCC.Core.TopLoc `
+            --hidden-import OCC.Core.TopTools `
+            --hidden-import OCC.Core.gp `
+            --hidden-import OCC.Core.BRepBuilderAPI `
+            --hidden-import OCC.Core.BRepTools `
+            --hidden-import OCC.Core.Bnd `
+            --hidden-import OCC.Core.BRepBndLib `
+            --hidden-import OCC.Core.BRepMesh `
+            --hidden-import OCC.Core.BRepPrimAPI `
+            --hidden-import OCC.Core.TopExp `
+            --hidden-import OCC.Core.TopExp_Explorer `
+            --hidden-import OCC.Core.ShapeAnalysis `
+            --hidden-import OCC.Core.ShapeFix `
+            --hidden-import OCC.Core.StlAPI `
+            --hidden-import OCC.Core.UnitsAPI `
+            --hidden-import OCC.Core.Message `
             --collect-all OCC `
             --collect-all vtk `
-            --add-data "$envPath\Library\bin\*.dll;." `
-            gui_tinker.py
+            --collect-all pyvista `
+            main.py
         shell: pwsh
 
       - name: Upload artifact
