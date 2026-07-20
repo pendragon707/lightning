@@ -32,6 +32,10 @@ jobs:
             --add-data "src;src" `
             --add-data "gui;gui" `
             --add-data "$envPath\Library\bin\*.dll;." `
+            --hidden-import tkinter `
+            --hidden-import tkinter.ttk `
+            --hidden-import tkinter.filedialog `
+            --hidden-import tkinter.messagebox 
             --hidden-import numpy `
             --hidden-import scipy `
             --hidden-import pyvista `
