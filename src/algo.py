@@ -8,6 +8,19 @@ from functools import partial
 from multiprocessing import Pool, cpu_count
 import multiprocessing as mp
 
+import time
+from functools import wraps
+
+def timeit(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        elapsed = time.perf_counter() - start
+        print(f"{func.__name__}: {elapsed:.4f} seconds")
+        return result
+    return wrapper
+
 def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     """Process a chunk of points in parallel"""
     centers_chunk = points_chunk + normals_chunk * sphere_radius
@@ -21,6 +34,7 @@ def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
     return accessible_chunk
 
+@timeit
 def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, rotation_order="XYZ", tol=1e-3, n_workers=None):
     """Parallel version using multiprocessing"""
     ctx = mp.get_context('spawn')
@@ -105,6 +119,7 @@ def find_accessible_surface_parallel(mesh_path, sphere_radius, rotation_angles, 
     
     return mesh, centers
 
+@timeit
 def find_accessible_surface(mesh_path, sphere_radius, rotation_angles, rotation_order="XYZ", tol=1e-3, n_workers=None):
     """
     Finds surface fragments where a sphere of fixed radius can touch 
