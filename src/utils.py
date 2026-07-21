@@ -20,37 +20,6 @@ def get_accessible_mesh(result):
     accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
     return accessible_mesh
 
-# def rotate_step_shape(shape, angles, rotation_order):
-#     """Apply rotations to STEP shape using OCC transformations."""
-#     print("rotate_step_shape ", angles, rotation_order)
-    
-#     # Start with identity transformation
-#     transform = gp_Trsf()
-    
-#     # Apply rotations in the specified order
-#     first_rotation = True
-#     for axis in rotation_order:
-#         angle_rad = angles[axis] * 3.14159 / 180.0
-        
-#         rotation = gp_Trsf()
-#         if axis == 'X':
-#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(1,0,0)), angle_rad)
-#         elif axis == 'Y':
-#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,1,0)), angle_rad)
-#         elif axis == 'Z':
-#             rotation.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,0,1)), angle_rad)
-        
-#         if first_rotation:
-#             transform = rotation
-#             first_rotation = False
-#         else:
-#             transform.Multiply(rotation)
-    
-#     # Apply transformation to the shape
-#     transformer = BRepBuilderAPI_Transform(shape, transform, True)
-#     transformer.Build()
-#     return transformer.Shape()
-
 def rotate_step_shape(shape, angles, rotation_order, center_point=None):
     """Rotate STEP shape to match PyVista rotation."""
     from OCC.Core.gp import gp_Trsf, gp_Ax1, gp_Pnt, gp_Dir, gp_Vec
