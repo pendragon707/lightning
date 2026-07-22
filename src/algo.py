@@ -1,4 +1,7 @@
 import pyvista as pv
+import open3d as o3d
+import trimesh
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
@@ -21,14 +24,12 @@ def timeit(func):
         return result
     return wrapper
 
+
+# -------------------------- pyvista ------------------------------------
+
 def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
     """Process a chunk of points in parallel"""
     centers_chunk = points_chunk + normals_chunk * sphere_radius
-    # # Optimize: reduce k to 1 + use radius search
-    # # We only need nearest neighbor distance
-    # dists, _ = tree.query(centers_chunk, k=1, workers=1)  # workers=1 because we're already parallelizing
-    # return dists >= (sphere_radius - tol)
-
     dists, indices = tree.query(centers_chunk, k=2, workers=1)
 
     accessible_chunk = dists[:, 1] >= (sphere_radius - tol)
@@ -210,49 +211,310 @@ def find_accessible_surface(mesh_path, sphere_radius, rotation_angles=None, rota
     mesh['accessible'] = accessible.astype(float)
     return mesh, centers
 
-# TEST
+# -------------------------- open3d ------------------------------------
 
-import open3d as o3d
+def process_chunk_open3d(args):
+    """
+    Process chunk using vectorized operations for better performance.
+    """
+    vertices_chunk, normals_chunk, tree, sphere_radius, tol = args
+    
+    # Vectorized center calculation
+    centers_chunk = vertices_chunk + normals_chunk * sphere_radius
+    
+    # Query all centers at once (vectorized)
+    # Query k=2 for each center
+    dists, _ = tree.query(centers_chunk, k=2, workers=1)
+    
+    # Accessible if second nearest is beyond sphere radius
+    accessible_chunk = dists[:, 1] >= (sphere_radius * tol)
+    
+    return accessible_chunk, centers_chunk
 
-@timeit
-def find_accessible_surface_open3d(mesh_path, sphere_radius):
+def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, n_workers=None, tol=0.99):
+    """
+    Parallel version with vectorized chunk processing.
+    """
+    import time
+    
+    start_time = time.time()
+    
+    # 1. Load mesh with Open3D
     mesh = o3d.io.read_triangle_mesh(mesh_path)
+    
+    # 2. Clean and process mesh
+    mesh.remove_duplicated_vertices()
+    mesh.remove_duplicated_triangles()
+    mesh.remove_non_manifold_edges()
+    
+    # 3. Compute vertex normals
     mesh.compute_vertex_normals()
     
     vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
     normals = np.asarray(mesh.vertex_normals)
     
-    # Build KDTree
+    print(f"Loaded mesh with {len(vertices)} vertices")
+    
+    # 4. Build KDTree for efficient queries
+    tree = cKDTree(vertices, balanced_tree=True, compact_nodes=True)
+    
+    # 5. Prepare data for parallel processing
+    n_workers = n_workers or cpu_count()
+    n_workers = min(n_workers, len(vertices))  # Don't use more workers than vertices
+    
+    indices = np.arange(len(vertices))
+    chunks = np.array_split(indices, n_workers)
+    
+    print(f"Using {n_workers} workers, {len(chunks)} chunks")
+    
+    # Prepare arguments for each worker
+    args_list = []
+    for chunk in chunks:
+        args_list.append((
+            vertices[chunk],
+            normals[chunk],
+            tree,
+            sphere_radius,
+            tol
+        ))
+    
+    # 6. Process in parallel
+    from multiprocessing import get_context
+    ctx = get_context('spawn')
+    
+    print("Starting parallel processing...")
+    with ctx.Pool(n_workers) as pool:
+        results = pool.map(process_chunk_open3d, args_list)
+    
+    # 7. Combine results
+    accessible_list = []
+    centers_list = []
+    for accessible_chunk, centers_chunk in results:
+        accessible_list.append(accessible_chunk)
+        centers_list.append(centers_chunk)
+    
+    accessible = np.concatenate(accessible_list)
+    centers = np.concatenate(centers_list)
+    
+    print(f"Processing completed in {time.time() - start_time:.2f} seconds")
+    print(f"Accessible vertices: {np.sum(accessible)} / {len(vertices)}")
+    
+    # 8. Convert to PyVista
+    mesh_pv = pv.PolyData()
+    mesh_pv.points = vertices
+    faces = np.hstack([np.full((len(triangles), 1), 3), triangles])
+    mesh_pv.faces = faces.flatten()
+    mesh_pv['accessible'] = accessible.astype(float)
+    
+    return mesh_pv, centers
+
+@timeit
+def find_accessible_surface_open3d(mesh_path, sphere_radius, n_workers=None):
+    """
+    Finds accessible surface fragments using Open3D for better accuracy.
+    """
+    # 1. Load mesh with Open3D
+    mesh = o3d.io.read_triangle_mesh(mesh_path)
+    
+    # 2. Clean and process mesh
+    mesh.remove_duplicated_vertices()
+    mesh.remove_duplicated_triangles()
+    mesh.remove_non_manifold_edges()
+    
+    # 3. Compute vertex normals
+    mesh.compute_vertex_normals()
+    
+    vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
+    
+    # 4. Build KDTree for efficient queries
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(vertices)
     tree = o3d.geometry.KDTreeFlann(pcd)
     
+    # 5. Check each vertex
     accessible = np.zeros(len(vertices), dtype=bool)
+    centers = np.zeros_like(vertices)
     
-    for i, (vertex, normal) in enumerate(zip(vertices, normals)):
+    for i, vertex in enumerate(vertices):
+        # Get normal at this vertex
+        normal = np.asarray(mesh.vertex_normals)[i]
+        if np.linalg.norm(normal) == 0:
+            continue
+            
+        # Candidate sphere center
         center = vertex + normal * sphere_radius
+        centers[i] = center
         
         # Query nearest neighbors
         [_, idx, dist] = tree.search_knn_vector_3d(center, 2)
         
-        # Check if second nearest is beyond radius
-        if len(dist) > 1 and dist[1] >= sphere_radius * sphere_radius:
+        # Check if second nearest is beyond sphere radius
+        if len(dist) > 1 and dist[1] >= sphere_radius * sphere_radius * 0.99:
             accessible[i] = True
     
-    # Convert back to PyVista if needed
-    mesh_pv = pv.wrap(mesh)
+    # 6. Convert Open3D mesh to PyVista
+    # Method 1: Using vertices and faces
+    mesh_pv = pv.PolyData()
+    mesh_pv.points = vertices
+    
+    # Open3D triangles are Nx3, PyVista needs Nx4 (with cell size)
+    faces = np.hstack([np.full((len(triangles), 1), 3), triangles])
+    mesh_pv.faces = faces.flatten()
+    
+    # Add the accessible data
     mesh_pv['accessible'] = accessible.astype(float)
-    return mesh_pv
+    
+    return mesh_pv, centers
 
+# -------------------------- trimesh ------------------------------------
+
+@timeit
+def find_accessible_surface_trimesh(mesh_path, sphere_radius):
+    """
+    Uses trimesh as intermediate format for better compatibility.
+    """
+    
+    # 1. Load mesh with trimesh
+    mesh_trimesh = trimesh.load(mesh_path)
+    
+    # 2. Get vertices and normals
+    vertices = mesh_trimesh.vertices
+    vertex_normals = mesh_trimesh.vertex_normals
+    
+    # 3. Build KDTree
+    tree = cKDTree(vertices)
+    
+    # 4. Check accessibility
+    accessible = np.zeros(len(vertices), dtype=bool)
+    centers = np.zeros_like(vertices)
+    
+    for i, (vertex, normal) in enumerate(zip(vertices, vertex_normals)):
+        if np.linalg.norm(normal) == 0:
+            continue
+            
+        center = vertex + normal * sphere_radius
+        centers[i] = center
+        
+        # Query nearest neighbors (k=2 because nearest is the vertex itself)
+        dists, _ = tree.query(center, k=2)
+        if len(dists) > 1 and dists[1] >= sphere_radius * 0.99:
+            accessible[i] = True
+    
+    # 5. Convert to PyVista
+    # Trimesh -> PyVista conversion
+    mesh_pv = pv.wrap(mesh_trimesh)  # This should work!
+    mesh_pv['accessible'] = accessible.astype(float)
+    
+    return mesh_pv, centers
+
+def process_chunk_trimesh(args):
+    """
+    Process a chunk of vertices for trimesh algorithm.
+    Args is a tuple containing all needed data.
+    """
+    # Unpack the tuple - it should contain exactly 5 elements
+    vertices_chunk, normals_chunk, tree, sphere_radius, tol = args
+    
+    # Vectorized center calculation
+    centers_chunk = vertices_chunk + normals_chunk * sphere_radius
+    
+    # Query KDTree for all centers in chunk
+    dists, _ = tree.query(centers_chunk, k=2, workers=1)
+    
+    # Check if second nearest is beyond sphere radius
+    if len(dists.shape) == 1:
+        # Only one point in chunk
+        accessible_chunk = np.array([dists[1] >= sphere_radius * tol]) if len(dists) > 1 else np.array([False])
+    else:
+        accessible_chunk = dists[:, 1] >= (sphere_radius * tol)
+    
+    return accessible_chunk, centers_chunk
+
+def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, n_workers=None, tol=0.99, verbose=True):
+    """
+    Parallel version using trimesh with multiprocessing.
+    """
+    start_time = time.time()
+    
+    # 1. Load mesh with trimesh
+    if verbose:
+        print(f"Loading mesh from: {mesh_path}")
+    mesh_trimesh = trimesh.load(mesh_path)
+    
+    # 2. Get vertices and normals
+    vertices = np.asarray(mesh_trimesh.vertices)
+    vertex_normals = np.asarray(mesh_trimesh.vertex_normals)
+    
+    if verbose:
+        print(f"Loaded mesh with {len(vertices)} vertices")
+        print(f"Mesh has {len(mesh_trimesh.faces)} faces")
+    
+    # 3. Build KDTree
+    tree = cKDTree(vertices, balanced_tree=True, compact_nodes=True)
+    
+    # 4. Prepare data for parallel processing
+    n_workers = n_workers or cpu_count()
+    n_workers = min(n_workers, len(vertices))  # Don't use more workers than vertices
+    
+    # Split indices into chunks
+    indices = np.arange(len(vertices))
+    chunk_indices_list = np.array_split(indices, n_workers)
+    
+    if verbose:
+        print(f"Using {n_workers} workers, {len(chunk_indices_list)} chunks")
+    
+    # Prepare arguments for each worker - each is a tuple of (vertices_chunk, normals_chunk, tree, sphere_radius, tol)
+    args_list = []
+    for chunk_indices in chunk_indices_list:
+        vertices_chunk = vertices[chunk_indices]
+        normals_chunk = vertex_normals[chunk_indices]
+        args_list.append((vertices_chunk, normals_chunk, tree, sphere_radius, tol))
+    
+    # 5. Process in parallel
+    if verbose:
+        print("Starting parallel processing...")
+    
+    # Use 'spawn' context for better compatibility
+    ctx = mp.get_context('spawn')
+    
+    with ctx.Pool(n_workers) as pool:
+        results = pool.map(process_chunk_trimesh, args_list)
+    
+    # 6. Combine results
+    accessible_list = []
+    centers_list = []
+    for accessible_chunk, centers_chunk in results:
+        accessible_list.append(accessible_chunk)
+        centers_list.append(centers_chunk)
+    
+    accessible = np.concatenate(accessible_list)
+    centers = np.concatenate(centers_list)
+    
+    if verbose:
+        elapsed_time = time.time() - start_time
+        accessible_count = np.sum(accessible)
+        print(f"Processing completed in {elapsed_time:.2f} seconds")
+        print(f"Accessible vertices: {accessible_count} / {len(vertices)} ({100*accessible_count/len(vertices):.1f}%)")
+    
+    # 7. Convert to PyVista
+    mesh_pv = pv.wrap(mesh_trimesh)
+    mesh_pv['accessible'] = accessible.astype(float)
+    
+    return mesh_pv, centers
 
 if __name__ == "__main__":
     # pass
     path = "/home/none/Projects/light/objects/obt_LG.obj"
     radius = 50000  
 
-    result, centers = find_accessible_surface(path, sphere_radius=radius)
-    result, centers = find_accessible_surface_parallel(path, sphere_radius=radius)
-    result, centers = find_accessible_surface_open3d(path, sphere_radius=radius)
+    # result, centers = find_accessible_surface(path, sphere_radius=radius)
+    # result, centers = find_accessible_surface_parallel(path, sphere_radius=radius)
+    # result, centers = find_accessible_surface_open3d(path, sphere_radius=radius)
+    result, centers = find_accessible_surface_open3d_parallel(path, sphere_radius=radius)    
+    # result, centers = find_accessible_surface_trimesh_parallel(path, sphere_radius=radius)    
+    # result, centers = find_accessible_surface_trimesh(path, sphere_radius=radius)
     
     # Extract accessible fragment
     accessible_indices = np.where( result['accessible'] > 0.5)[0]
@@ -264,20 +526,3 @@ if __name__ == "__main__":
     p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
     p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
     p.show() 
-    
-    # Save result
-    accessible_mesh.save("images/accessible_fragment_open3d.obj")       
-
-    # # Extract accessible fragment
-    # accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    # accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    # accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
-    
-    # # Visualization
-    # p = pv.Plotter()
-    # p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    # p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
-    # p.show() 
-    
-    # # Save result
-    # accessible_mesh.save("images/accessible_fragment.obj")    

@@ -26,4 +26,5 @@ conda activate pyoccenv
 conda install -c conda-forge pythonocc-core=7.9.3
 conda install -c conda-forge open3d
 pip install pyvista 
+pip install trimesh
 ```
