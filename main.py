@@ -1,6 +1,8 @@
 from gui import MainWindow
+import multiprocessing
 
 def main():
+    multiprocessing.freeze_support()
     app = MainWindow()
     app.run()
 

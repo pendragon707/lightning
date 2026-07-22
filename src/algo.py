@@ -14,6 +14,13 @@ import multiprocessing as mp
 import time
 from functools import wraps
 
+def is_main_process():
+    """Check if we're running in the main process."""
+    try:
+        return mp.current_process().name == 'MainProcess'
+    except:
+        return True
+
 def timeit(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -322,10 +329,13 @@ def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, rotation_a
     
     # 6. Process in parallel
     from multiprocessing import get_context
-    ctx = get_context('spawn')
+    # ctx = get_context('spawn')
+    if mp.get_start_method(allow_none=True) is None:
+        mp.set_start_method('spawn', force=True)    
     
     print("Starting parallel processing...")
-    with ctx.Pool(n_workers) as pool:
+    # with ctx.Pool(n_workers) as pool:
+    with Pool(n_workers) as pool:
         results = pool.map(process_chunk_open3d, args_list)
     
     # 7. Combine results
@@ -560,6 +570,10 @@ def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, rotation_
     """
     Parallel version using trimesh with multiprocessing.
     """
+    if not is_main_process():
+        print("Running in child process, using serial version")
+        return find_accessible_surface_open3d(mesh_path, sphere_radius, rotation_angles, rotation_order)
+
     start_time = time.time()
     
     # 1. Load mesh with trimesh
