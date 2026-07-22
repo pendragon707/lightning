@@ -178,6 +178,10 @@ class MainWindow:
         
         tab, tab_name = self._get_active_tab()
         params = self._get_task_params(tab, task_type)
+
+        for tab in self.tabs.values():
+            tab.update_config(self.config)
+        params['config'] = self.config
         
         # Update task_type based on tab if needed
         if task_type == "show":

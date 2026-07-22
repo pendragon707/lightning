@@ -67,22 +67,6 @@ class WorkerThread(threading.Thread):
             rotation_angles=rotation_angles,
             rotation_order=self.params['rotation_order']
         )
-        
-        # # Calculate mask
-        # if self.params['paral']:
-        #     result, centers = find_accessible_surface_parallel(
-        #         self.params['obj'], 
-        #         sphere_radius=self.params['radius'],
-        #         rotation_angles=rotation_angles,
-        #         rotation_order=self.params['rotation_order']
-        #     )
-        # else:
-        #     result, centers = find_accessible_surface(
-        #         self.params['obj'], 
-        #         sphere_radius=self.params['radius'],
-        #         rotation_angles=rotation_angles,
-        #         rotation_order=self.params['rotation_order']
-        #     )
 
         accessible_mesh = get_accessible_mesh(result)
         
@@ -99,7 +83,12 @@ class WorkerThread(threading.Thread):
         if 'stp' in self.params:
             save_stp_path = out_path / Path(self.params['stp']).name
             print(save_stp_path)
-            shutil.copy(self.params['stp'], save_stp_path)        
+            shutil.copy(self.params['stp'], save_stp_path)     
+
+        if 'config' in self.params:
+            config_path = out_path / "config.json"
+            self.params['config'].save_to_file(str(config_path))
+            self.progress_callback(f"Конфигурация сохранена в: {config_path}")   
         
         # Generate plots if requested
         if self.params['plots']:  
