@@ -461,6 +461,47 @@ def find_accessible_surface_trimesh(mesh_path, sphere_radius, rotation_angles=No
     
     # 1. Load mesh with trimesh
     mesh_trimesh = trimesh.load(mesh_path)
+
+    # 2. Apply rotations if specified
+    if rotation_angles is None:
+        rotation_angles = {'X': 0, 'Y': 0, 'Z': 0}
+    
+    # Convert angles to radians
+    angles_rad = {
+        'X': np.radians(rotation_angles.get('X', 0)),
+        'Y': np.radians(rotation_angles.get('Y', 0)),
+        'Z': np.radians(rotation_angles.get('Z', 0))
+    }
+    
+    # Create rotation matrices
+    rotation_matrix = np.eye(3)
+    
+    for axis in rotation_order:
+        if axis == 'X':
+            R_x = np.array([
+                [1, 0, 0],
+                [0, np.cos(angles_rad['X']), -np.sin(angles_rad['X'])],
+                [0, np.sin(angles_rad['X']), np.cos(angles_rad['X'])]
+            ])
+            rotation_matrix = R_x @ rotation_matrix
+        elif axis == 'Y':
+            R_y = np.array([
+                [np.cos(angles_rad['Y']), 0, np.sin(angles_rad['Y'])],
+                [0, 1, 0],
+                [-np.sin(angles_rad['Y']), 0, np.cos(angles_rad['Y'])]
+            ])
+            rotation_matrix = R_y @ rotation_matrix
+        elif axis == 'Z':
+            R_z = np.array([
+                [np.cos(angles_rad['Z']), -np.sin(angles_rad['Z']), 0],
+                [np.sin(angles_rad['Z']), np.cos(angles_rad['Z']), 0],
+                [0, 0, 1]
+            ])
+            rotation_matrix = R_z @ rotation_matrix
+    
+    # Apply rotation to mesh
+    if not np.allclose(rotation_matrix, np.eye(3)):
+        mesh_trimesh.apply_transform(np.vstack([np.hstack([rotation_matrix, np.zeros((3, 1))]), [0, 0, 0, 1]]))    
     
     # 2. Get vertices and normals
     vertices = mesh_trimesh.vertices
@@ -525,6 +566,47 @@ def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, rotation_
     if verbose:
         print(f"Loading mesh from: {mesh_path}")
     mesh_trimesh = trimesh.load(mesh_path)
+
+    # 2. Apply rotations if specified
+    if rotation_angles is None:
+        rotation_angles = {'X': 0, 'Y': 0, 'Z': 0}
+    
+    # Convert angles to radians
+    angles_rad = {
+        'X': np.radians(rotation_angles.get('X', 0)),
+        'Y': np.radians(rotation_angles.get('Y', 0)),
+        'Z': np.radians(rotation_angles.get('Z', 0))
+    }
+    
+    # Create rotation matrices
+    rotation_matrix = np.eye(3)
+    
+    for axis in rotation_order:
+        if axis == 'X':
+            R_x = np.array([
+                [1, 0, 0],
+                [0, np.cos(angles_rad['X']), -np.sin(angles_rad['X'])],
+                [0, np.sin(angles_rad['X']), np.cos(angles_rad['X'])]
+            ])
+            rotation_matrix = R_x @ rotation_matrix
+        elif axis == 'Y':
+            R_y = np.array([
+                [np.cos(angles_rad['Y']), 0, np.sin(angles_rad['Y'])],
+                [0, 1, 0],
+                [-np.sin(angles_rad['Y']), 0, np.cos(angles_rad['Y'])]
+            ])
+            rotation_matrix = R_y @ rotation_matrix
+        elif axis == 'Z':
+            R_z = np.array([
+                [np.cos(angles_rad['Z']), -np.sin(angles_rad['Z']), 0],
+                [np.sin(angles_rad['Z']), np.cos(angles_rad['Z']), 0],
+                [0, 0, 1]
+            ])
+            rotation_matrix = R_z @ rotation_matrix
+    
+    # Apply rotation to mesh
+    if not np.allclose(rotation_matrix, np.eye(3)):
+        mesh_trimesh.apply_transform(np.vstack([np.hstack([rotation_matrix, np.zeros((3, 1))]), [0, 0, 0, 1]]))    
     
     # 2. Get vertices and normals
     vertices = np.asarray(mesh_trimesh.vertices)
