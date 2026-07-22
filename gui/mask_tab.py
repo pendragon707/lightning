@@ -4,7 +4,7 @@ from tkinter import ttk
 from pathlib import Path
 from .tab_configs import TabConfig
 
-from src import get_step_units
+from src import AlgorithmFactory
 
 class MaskTabConfig(TabConfig):
     """Configuration for the Mask tab"""
@@ -16,12 +16,15 @@ class MaskTabConfig(TabConfig):
         self.radius_input = tk.StringVar(value=config.radius_input)
         self.mask_outdir = tk.StringVar(value=config.mask_outdir)
         self.units_var = tk.StringVar(value=config.units_var)
+        self.algo_default = tk.StringVar(value=config.algo_default)
         self.mask_rotation_order = tk.StringVar(value=config.mask_rotation_order)
         self.mask_rotate_x = tk.DoubleVar(value=config.mask_rotate_x)
         self.mask_rotate_y = tk.DoubleVar(value=config.mask_rotate_y)
         self.mask_rotate_z = tk.DoubleVar(value=config.mask_rotate_z)
         self.paral_var = tk.BooleanVar(value=config.paral_var)
         self.plots_var = tk.BooleanVar(value=config.plots_var)
+
+        self.algo_list = AlgorithmFactory.get_available_algorithms()
         
         # Warning labels
         self.obj_warning = None
@@ -64,6 +67,18 @@ class MaskTabConfig(TabConfig):
             width=20
         )
         self.combobox.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+        # Algo
+        algo_frame = ttk.Frame(scrollable_frame)
+        algo_frame.pack(fill=tk.X, pady=5)
+        tk.Label(algo_frame, text="Алгоритм:").pack(side=tk.LEFT)        
+        self.combobox_algo = ttk.Combobox(
+            algo_frame,
+            textvariable=self.algo_default,
+            values=self.algo_list,
+            width=20
+        )
+        self.combobox_algo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)        
         
         # Output directory
         outdir_frame = ttk.Frame(scrollable_frame)
@@ -105,6 +120,7 @@ class MaskTabConfig(TabConfig):
         params = {
             'obj': self.mask_obj_path.get(),
             'radius': float(self.radius_input.get()),
+            'algo': self.algo_default.get(),
             'paral': self.paral_var.get(),
             'plots': self.plots_var.get(),
             'rotate_x': self.mask_rotate_x.get(),
@@ -131,6 +147,7 @@ class MaskTabConfig(TabConfig):
         config.radius_input = self.radius_input.get()
         config.mask_outdir = self.mask_outdir.get()
         config.units_var = self.units_var.get()
+        config.algo_default = self.algo_default.get()
         config.mask_rotation_order = self.mask_rotation_order.get()
         config.mask_rotate_x = self.mask_rotate_x.get()
         config.mask_rotate_y = self.mask_rotate_y.get()
@@ -146,6 +163,7 @@ class MaskTabConfig(TabConfig):
         self.radius_input.set(config.radius_input)
         self.mask_outdir.set(config.mask_outdir)
         self.units_var.set(config.units_var)
+        self.algo_default.set(config.algo_default)
         self.mask_rotation_order.set(config.mask_rotation_order)
         self.mask_rotate_x.set(config.mask_rotate_x)
         self.mask_rotate_y.set(config.mask_rotate_y)

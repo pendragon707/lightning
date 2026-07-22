@@ -20,6 +20,8 @@ class AppConfig:
     mask_rotate_x: float = 0.0
     mask_rotate_y: float = 0.0
     mask_rotate_z: float = 0.0
+
+    algo_default: str = 'open3d'
     
     # Checkboxes
     paral_var: bool = True

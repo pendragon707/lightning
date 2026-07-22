@@ -24,7 +24,6 @@ def timeit(func):
         return result
     return wrapper
 
-
 # -------------------------- pyvista ------------------------------------
 
 def process_chunk(points_chunk, normals_chunk, tree, sphere_radius, tol):
@@ -231,7 +230,7 @@ def process_chunk_open3d(args):
     
     return accessible_chunk, centers_chunk
 
-def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, n_workers=None, tol=0.99):
+def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, rotation_angles=None, rotation_order="XYZ", n_workers=None, tol=0.99):
     """
     Parallel version with vectorized chunk processing.
     """
@@ -247,6 +246,48 @@ def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, n_workers=
     mesh.remove_duplicated_triangles()
     mesh.remove_non_manifold_edges()
     
+    # 3. Apply rotations if specified
+    if rotation_angles is None:
+        rotation_angles = {'X': 0, 'Y': 0, 'Z': 0}
+    
+    # Create rotation matrix using Open3D
+    rotation_matrix = np.eye(3)
+    
+    # Convert angles to radians
+    angles_rad = {
+        'X': np.radians(rotation_angles.get('X', 0)),
+        'Y': np.radians(rotation_angles.get('Y', 0)),
+        'Z': np.radians(rotation_angles.get('Z', 0))
+    }
+
+    # Apply rotations in specified order
+    for axis in rotation_order:
+        if axis == 'X':
+            R_x = np.array([
+                [1, 0, 0],
+                [0, np.cos(angles_rad['X']), -np.sin(angles_rad['X'])],
+                [0, np.sin(angles_rad['X']), np.cos(angles_rad['X'])]
+            ])
+            rotation_matrix = R_x @ rotation_matrix
+        elif axis == 'Y':
+            R_y = np.array([
+                [np.cos(angles_rad['Y']), 0, np.sin(angles_rad['Y'])],
+                [0, 1, 0],
+                [-np.sin(angles_rad['Y']), 0, np.cos(angles_rad['Y'])]
+            ])
+            rotation_matrix = R_y @ rotation_matrix
+        elif axis == 'Z':
+            R_z = np.array([
+                [np.cos(angles_rad['Z']), -np.sin(angles_rad['Z']), 0],
+                [np.sin(angles_rad['Z']), np.cos(angles_rad['Z']), 0],
+                [0, 0, 1]
+            ])
+            rotation_matrix = R_z @ rotation_matrix
+    
+    # Apply rotation to mesh
+    if not np.allclose(rotation_matrix, np.eye(3)):
+        mesh.rotate(rotation_matrix, center=(0, 0, 0))
+
     # 3. Compute vertex normals
     mesh.compute_vertex_normals()
     
@@ -310,7 +351,7 @@ def find_accessible_surface_open3d_parallel(mesh_path, sphere_radius, n_workers=
     return mesh_pv, centers
 
 @timeit
-def find_accessible_surface_open3d(mesh_path, sphere_radius, n_workers=None):
+def find_accessible_surface_open3d(mesh_path, sphere_radius, rotation_angles=None, rotation_order="XYZ", n_workers=None):
     """
     Finds accessible surface fragments using Open3D for better accuracy.
     """
@@ -322,6 +363,48 @@ def find_accessible_surface_open3d(mesh_path, sphere_radius, n_workers=None):
     mesh.remove_duplicated_triangles()
     mesh.remove_non_manifold_edges()
     
+    # 3. Apply rotations if specified
+    if rotation_angles is None:
+        rotation_angles = {'X': 0, 'Y': 0, 'Z': 0}
+    
+    # Create rotation matrix using Open3D
+    rotation_matrix = np.eye(3)
+    
+    # Convert angles to radians
+    angles_rad = {
+        'X': np.radians(rotation_angles.get('X', 0)),
+        'Y': np.radians(rotation_angles.get('Y', 0)),
+        'Z': np.radians(rotation_angles.get('Z', 0))
+    }
+
+    # Apply rotations in specified order
+    for axis in rotation_order:
+        if axis == 'X':
+            R_x = np.array([
+                [1, 0, 0],
+                [0, np.cos(angles_rad['X']), -np.sin(angles_rad['X'])],
+                [0, np.sin(angles_rad['X']), np.cos(angles_rad['X'])]
+            ])
+            rotation_matrix = R_x @ rotation_matrix
+        elif axis == 'Y':
+            R_y = np.array([
+                [np.cos(angles_rad['Y']), 0, np.sin(angles_rad['Y'])],
+                [0, 1, 0],
+                [-np.sin(angles_rad['Y']), 0, np.cos(angles_rad['Y'])]
+            ])
+            rotation_matrix = R_y @ rotation_matrix
+        elif axis == 'Z':
+            R_z = np.array([
+                [np.cos(angles_rad['Z']), -np.sin(angles_rad['Z']), 0],
+                [np.sin(angles_rad['Z']), np.cos(angles_rad['Z']), 0],
+                [0, 0, 1]
+            ])
+            rotation_matrix = R_z @ rotation_matrix
+    
+    # Apply rotation to mesh
+    if not np.allclose(rotation_matrix, np.eye(3)):
+        mesh.rotate(rotation_matrix, center=(0, 0, 0))
+
     # 3. Compute vertex normals
     mesh.compute_vertex_normals()
     
@@ -371,7 +454,7 @@ def find_accessible_surface_open3d(mesh_path, sphere_radius, n_workers=None):
 # -------------------------- trimesh ------------------------------------
 
 @timeit
-def find_accessible_surface_trimesh(mesh_path, sphere_radius):
+def find_accessible_surface_trimesh(mesh_path, sphere_radius, rotation_angles=None, rotation_order="XYZ"):
     """
     Uses trimesh as intermediate format for better compatibility.
     """
@@ -432,7 +515,7 @@ def process_chunk_trimesh(args):
     
     return accessible_chunk, centers_chunk
 
-def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, n_workers=None, tol=0.99, verbose=True):
+def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, rotation_angles=None, rotation_order="XYZ", n_workers=None, tol=0.99, verbose=True):
     """
     Parallel version using trimesh with multiprocessing.
     """
@@ -504,25 +587,49 @@ def find_accessible_surface_trimesh_parallel(mesh_path, sphere_radius, n_workers
     
     return mesh_pv, centers
 
-if __name__ == "__main__":
-    # pass
-    path = "/home/none/Projects/light/objects/obt_LG.obj"
-    radius = 50000  
+class AlgorithmFactory:
+    """Factory for creating algorithm functions"""
+    
+    _algorithms = {
+        'pyvista': {
+            'serial': find_accessible_surface,
+            'parallel': find_accessible_surface_parallel,
+        },
+        'open3d': {
+            'serial': find_accessible_surface_open3d,
+            'parallel': find_accessible_surface_open3d_parallel,
+        },
+        'trimesh': {
+            'serial': find_accessible_surface_trimesh,
+            'parallel': find_accessible_surface_trimesh_parallel,
+        }
+    }
+    
+    @classmethod
+    def get_algorithm(cls, algo_name, use_parallel=False):
+        """Get the appropriate algorithm function"""
+        algo_config = cls._algorithms.get(algo_name)
+        if not algo_config:
+            raise ValueError(f"Unknown algorithm: {algo_name}")
+        
+        mode = 'parallel' if use_parallel else 'serial'
+        algo_func = algo_config.get(mode)
+        
+        if not algo_func:
+            raise ValueError(f"Algorithm {algo_name} does not support {mode} mode")
+        
+        return algo_func
+    
+    @classmethod
+    def get_available_algorithms(cls):
+        """Get list of available algorithm names (without _paral suffix)"""
+        return list(cls._algorithms.keys())
+    
+    @classmethod
+    def supports_parallel(cls, algo_name):
+        """Check if algorithm supports parallel mode"""
+        algo_config = cls._algorithms.get(algo_name)
+        return algo_config and 'parallel' in algo_config
 
-    # result, centers = find_accessible_surface(path, sphere_radius=radius)
-    # result, centers = find_accessible_surface_parallel(path, sphere_radius=radius)
-    # result, centers = find_accessible_surface_open3d(path, sphere_radius=radius)
-    result, centers = find_accessible_surface_open3d_parallel(path, sphere_radius=radius)    
-    # result, centers = find_accessible_surface_trimesh_parallel(path, sphere_radius=radius)    
-    # result, centers = find_accessible_surface_trimesh(path, sphere_radius=radius)
-    
-    # Extract accessible fragment
-    accessible_indices = np.where( result['accessible'] > 0.5)[0]
-    accessible_mesh = result.extract_points(accessible_indices, adjacent_cells=True)    
-    accessible_mesh = accessible_mesh.extract_surface(algorithm='dataset_surface')
-    
-    # Visualization
-    p = pv.Plotter()
-    p.add_mesh(result, scalars='accessible', cmap='coolwarm', show_edges=False, smooth_shading=True, opacity=0.3, label='Full Mesh')
-    p.add_mesh(accessible_mesh, color='red', show_edges=False, smooth_shading=True, label='Accessible Surface')
-    p.show() 
+if __name__ == "__main__":
+    pass

@@ -16,6 +16,7 @@ import numpy as np
 from src import find_accessible_surface, find_accessible_surface_parallel, get_accessible_mesh
 from src import plot_mesh_with_projections, get_2d_mask, plot_mesh_mask, draw_sphere
 from src import load_step, rotate_step_shape
+from src import AlgorithmFactory
 
 class WorkerThread(threading.Thread):
     """Worker thread for running calculations without freezing the UI"""
@@ -54,22 +55,34 @@ class WorkerThread(threading.Thread):
             'Y': self.params['rotate_y'],
             'Z': self.params['rotate_z']
         }
+
+        algo_func = AlgorithmFactory.get_algorithm(
+            self.params['algo'],
+            self.params['paral']
+        )
+
+        result, centers = algo_func(
+            self.params['obj'],
+            sphere_radius=self.params['radius'],
+            rotation_angles=rotation_angles,
+            rotation_order=self.params['rotation_order']
+        )
         
-        # Calculate mask
-        if self.params['paral']:
-            result, centers = find_accessible_surface_parallel(
-                self.params['obj'], 
-                sphere_radius=self.params['radius'],
-                rotation_angles=rotation_angles,
-                rotation_order=self.params['rotation_order']
-            )
-        else:
-            result, centers = find_accessible_surface(
-                self.params['obj'], 
-                sphere_radius=self.params['radius'],
-                rotation_angles=rotation_angles,
-                rotation_order=self.params['rotation_order']
-            )
+        # # Calculate mask
+        # if self.params['paral']:
+        #     result, centers = find_accessible_surface_parallel(
+        #         self.params['obj'], 
+        #         sphere_radius=self.params['radius'],
+        #         rotation_angles=rotation_angles,
+        #         rotation_order=self.params['rotation_order']
+        #     )
+        # else:
+        #     result, centers = find_accessible_surface(
+        #         self.params['obj'], 
+        #         sphere_radius=self.params['radius'],
+        #         rotation_angles=rotation_angles,
+        #         rotation_order=self.params['rotation_order']
+        #     )
 
         accessible_mesh = get_accessible_mesh(result)
         
