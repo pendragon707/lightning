@@ -178,16 +178,7 @@ class WorkerThread(threading.Thread):
 
         if 'mask' in self.params:
             self.progress_callback(f"Загружена маска из: {self.params['mask']}")
-            mesh_mask = pv.read(self.params['mask'])
-
-            # Apply rotations in selected order
-            for axis in self.params['rotation_order']:
-                if axis == 'X':                   
-                    mesh_mask = mesh_mask.rotate_x(rotation_angles['X'], inplace=False)
-                elif axis == 'Y':                    
-                    mesh_mask = mesh_mask.rotate_y(rotation_angles['Y'], inplace=False)
-                elif axis == 'Z':                    
-                    mesh_mask = mesh_mask.rotate_z(rotation_angles['Z'], inplace=False)                
+            mesh_mask = pv.read(self.params['mask'])           
 
             self.progress_callback("Генерация графиков...")        
             plot_mesh_mask(mesh, mesh_mask, save=False)
