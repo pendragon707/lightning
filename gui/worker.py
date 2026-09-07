@@ -134,20 +134,21 @@ class WorkerThread(threading.Thread):
         for axis in self.params['rotation_order']:
             if axis == 'X':
                 mesh = mesh.rotate_x(rotation_angles['X'], inplace=False)
-                mesh_mask = mesh_mask.rotate_x(rotation_angles['X'], inplace=False)
+                # mesh_mask = mesh_mask.rotate_x(rotation_angles['X'], inplace=False)
             elif axis == 'Y':
                 mesh = mesh.rotate_y(rotation_angles['Y'], inplace=False)
-                mesh_mask = mesh_mask.rotate_y(rotation_angles['Y'], inplace=False)
+                # mesh_mask = mesh_mask.rotate_y(rotation_angles['Y'], inplace=False)
             elif axis == 'Z':
                 mesh = mesh.rotate_z(rotation_angles['Z'], inplace=False)
-                mesh_mask = mesh_mask.rotate_z(rotation_angles['Z'], inplace=False)
+                # mesh_mask = mesh_mask.rotate_z(rotation_angles['Z'], inplace=False)
         
         self.progress_callback(f"Загружается модель (*.stp): {self.params['stp']}")
         shape = load_step(self.params['stp'])
-        shape = rotate_step_shape(shape, rotation_angles, self.params['rotation_order'])
+        # shape = rotate_step_shape(shape, rotation_angles, self.params['rotation_order'])
         
         self.progress_callback("Генерация графиков...")
         plot_mesh_with_projections(mesh_mask, shape, out_dir=out_path)
+        # plot_mesh_with_projections(mesh_mask, shape, out_dir=out_path, shape_scale=0.1)
         plot_mesh_mask(mesh, mesh_mask, out_dir=out_path)
         get_2d_mask(mesh_mask, out_dir=out_path)
         
