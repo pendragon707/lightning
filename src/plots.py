@@ -110,7 +110,7 @@ def plot_projections(shape, views=("front", "side", "top", "bottom")):
         
     return contours_2d
 
-def plot_mesh_with_projections(mesh, shape = None, views=("front", "side", "top", "bottom"), out_dir=None):
+def plot_mesh_with_projections(mesh, shape = None, views=("front", "side", "top", "bottom"), out_dir=None, shape_scale=1.0):
     """
     Plot PyVista mesh contours and shape projections on same Matplotlib figure.
     
@@ -121,7 +121,22 @@ def plot_mesh_with_projections(mesh, shape = None, views=("front", "side", "top"
     """
     # Extract edge points from shape
     if shape:
-        edges_3d = extract_edge_points(shape)
+        # edges_3d = extract_edge_points(shape)
+        if shape_scale != 1.0:
+            from OCC.Core.gp import gp_Trsf, gp_Pnt
+            from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+            
+            # Create scaling transformation
+            transform = gp_Trsf()
+            # SetScale expects (gp_Pnt origin, scale_factor)
+            transform.SetScale(gp_Pnt(0, 0, 0), shape_scale)
+            
+            # Apply transformation
+            from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
+            scaled_shape = BRepBuilderAPI_Transform(shape, transform, True).Shape()
+            edges_3d = extract_edge_points(scaled_shape)
+        else:
+            edges_3d = extract_edge_points(shape)
     
     # Create subplots
     fig, axes = plt.subplots(1, 4, figsize=(18, 6))
